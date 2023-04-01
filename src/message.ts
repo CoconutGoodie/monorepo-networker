@@ -1,4 +1,4 @@
-import * as uuid from "uuid";
+import { uuidV4 } from "./util/uuid_v4";
 import { Side } from "./side";
 import { Transports } from "./transport";
 import { AutoComplete } from "./types";
@@ -24,7 +24,7 @@ export abstract class MessageType<P, R = void> {
   private createTransportMessage(payload: P): TransportMessage<P> {
     const currentSide = Side.current;
     return {
-      requestId: uuid.v4(),
+      requestId: uuidV4(),
       type: this.getName(),
       from: currentSide.getName(),
       payload,
