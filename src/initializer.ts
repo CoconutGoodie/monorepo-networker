@@ -1,17 +1,17 @@
-import { NetworkMessageRegistry } from "./message";
-import { NetworkSide } from "./side";
-import { NetworkTransports } from "./transport";
+import { MessageTypeRegistry } from "./message";
+import { Side } from "./side";
+import { Transports } from "./transport";
 
 interface Options {
-  messagesRegistry: NetworkMessageRegistry;
-  initTransports: (register: typeof NetworkTransports.register) => void;
+  messagesRegistry: MessageTypeRegistry;
+  initTransports: (register: typeof Transports.register) => void;
 }
 
-export function createNetworkInitializer(opts: Options) {
-  return <E>(currentSide: NetworkSide<E>) => {
-    NetworkSide.current = currentSide;
+export function createInitializer(opts: Options) {
+  return <E>(currentSide: Side<E>) => {
+    Side.current = currentSide;
     currentSide.beginListening(opts.messagesRegistry);
 
-    opts.initTransports(NetworkTransports.register);
+    opts.initTransports(Transports.register);
   };
 }

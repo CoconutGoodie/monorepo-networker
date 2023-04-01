@@ -1,4 +1,4 @@
-import { NetworkTransports } from "../src";
+import * as Networker from "../src";
 
 declare global {
   type PluginMessage = { pluginId: string; pluginMessage: any };
@@ -6,7 +6,7 @@ declare global {
 
   const pluginApi: {
     ui: {
-      postMessage: NetworkTransports.TransportDelegate<any>;
+      postMessage: Networker.TransportDelegate<any>;
       on: (topic: "message", callback: MessageEventHandler) => void;
       off: (topic: "message", callback: MessageEventHandler) => void;
     };

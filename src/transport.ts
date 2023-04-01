@@ -1,21 +1,21 @@
 import { TransportMessage } from "./message";
-import { NetworkSide } from "./side";
+import { Side } from "./side";
 import { Consumer } from "./types";
 
-export namespace NetworkTransports {
-  export type TransportDelegate<M extends TransportMessage<any>> = Consumer<M>;
+export type TransportDelegate<M extends TransportMessage<any>> = Consumer<M>;
 
-  type RegistryKey = NetworkSide<any>;
-  type RegistryValue = Map<NetworkSide<any>, TransportDelegate<any>>;
+export namespace Transports {
+  type RegistryKey = Side;
+  type RegistryValue = Map<Side, TransportDelegate<any>>;
   const registry: Map<RegistryKey, RegistryValue> = new Map();
 
-  export function getDelegate(from: NetworkSide<any>, to: NetworkSide<any>) {
+  export function getDelegate(from: Side, to: Side) {
     return registry.get(from)?.get(to);
   }
 
   export function register(
-    from: NetworkSide<any>,
-    to: NetworkSide<any>,
+    from: Side,
+    to: Side,
     delegate: TransportDelegate<any>
   ) {
     if (!registry.has(from)) registry.set(from, new Map());

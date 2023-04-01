@@ -1,6 +1,6 @@
 import * as uuid from "uuid";
-import { NetworkSide } from "./side";
-import { NetworkTransports } from "./transport";
+import { Side } from "./side";
+import { Transports } from "./transport";
 import { AutoComplete } from "./types";
 
 export interface TransportMessage<P> {
@@ -10,19 +10,19 @@ export interface TransportMessage<P> {
   payload: P;
 }
 
-export abstract class NetworkMessage<P, R = void> {
+export abstract class MessageType<P, R = void> {
   constructor(private name: string) {}
 
   public getName() {
     return this.name;
   }
 
-  public abstract receivingSide(): NetworkSide<any>;
+  public abstract receivingSide(): Side;
 
-  public abstract handle(payload: P, from: NetworkSide<any>): R;
+  public abstract handle(payload: P, from: Side): R;
 
   private createTransportMessage(payload: P): TransportMessage<P> {
-    const currentSide = NetworkSide.current;
+    const currentSide = Side.current;
     return {
       requestId: uuid.v4(),
       type: this.getName(),
@@ -32,10 +32,10 @@ export abstract class NetworkMessage<P, R = void> {
   }
 
   public send(payload: P) {
-    const currentSide = NetworkSide.current;
+    const currentSide = Side.current;
     const receivingSide = this.receivingSide();
     const message = this.createTransportMessage(payload);
-    const delegate = NetworkTransports.getDelegate(currentSide, receivingSide);
+    const delegate = Transports.getDelegate(currentSide, receivingSide);
 
     if (!delegate) {
       throw new Error(
@@ -52,28 +52,25 @@ export abstract class NetworkMessage<P, R = void> {
     const sentMessage = this.send(payload);
 
     return new Promise<R>((resolve) => {
-      NetworkSide.current.beginListening(
-        null,
-        (message: TransportMessage<R>) => {
-          if (message.requestId === sentMessage.requestId) {
-            resolve(message.payload);
-            return true;
-          }
-          return false;
+      Side.current.beginListening(null, (message: TransportMessage<R>) => {
+        if (message.requestId === sentMessage.requestId) {
+          resolve(message.payload);
+          return true;
         }
-      );
+        return false;
+      });
     });
   }
 }
 
-export class NetworkMessageRegistry {
-  private registry: Map<string, NetworkMessage<any, any>> = new Map();
+export class MessageTypeRegistry {
+  private registry: Map<string, MessageType<any, any>> = new Map();
 
   public byName(name: string) {
     return this.registry.get(name);
   }
 
-  public register<P, R>(message: NetworkMessage<P, R>) {
+  public register<P, R>(message: MessageType<P, R>) {
     this.registry.set(message.getName(), message);
     return message;
   }

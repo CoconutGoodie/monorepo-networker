@@ -1,32 +1,32 @@
 /// <reference path="../../example-env.d.ts" />
 
-import { createNetworkInitializer } from "../../../src/index";
+import * as Networker from "../../../src/index";
 import { NetworkMessages } from "./messages";
-import { Side } from "./sides";
+import { NetworkSide } from "./sides";
 
-export const initializeNetwork = createNetworkInitializer({
+export const initializeNetwork = Networker.createInitializer({
   messagesRegistry: NetworkMessages.registry,
 
   initTransports: function (register) {
-    register(Side.SERVER, Side.PLUGIN, (message) => {
+    register(NetworkSide.SERVER, NetworkSide.PLUGIN, (message) => {
       fetch("ipc://plugin/", {
         method: "POST",
         body: message,
       });
     });
 
-    register(Side.PLUGIN, Side.SERVER, (message) => {
+    register(NetworkSide.PLUGIN, NetworkSide.SERVER, (message) => {
       fetch("ipc://server/", {
         method: "POST",
         body: message,
       });
     });
 
-    register(Side.PLUGIN, Side.UI, (message) => {
+    register(NetworkSide.PLUGIN, NetworkSide.UI, (message) => {
       pluginApi.ui.postMessage(message);
     });
 
-    register(Side.UI, Side.PLUGIN, (message) => {
+    register(NetworkSide.UI, NetworkSide.PLUGIN, (message) => {
       parent.postMessage({ pluginMessage: message }, "*");
     });
   },

@@ -1,10 +1,10 @@
 /// <reference path="../../example-env.d.ts" />
 
-import { NetworkSide } from "../../../src/index";
+import * as Networker from "../../../src/index";
 
-export namespace Side {
-  export const UI = NetworkSide.register(
-    new NetworkSide("UI", {
+export namespace NetworkSide {
+  export const UI = Networker.Side.register(
+    new Networker.Side("UI", {
       attachListener: (callback) =>
         window.addEventListener("message", callback),
       detachListener: (callback) =>
@@ -12,8 +12,8 @@ export namespace Side {
     })
   );
 
-  export const PLUGIN = NetworkSide.register(
-    new NetworkSide<MessageEvent>("Plugin", {
+  export const PLUGIN = Networker.Side.register(
+    new Networker.Side<MessageEvent>("Plugin", {
       shouldHandle: (event) => event.data.pluginId != null,
       messageGetter: (event) => (event.data as PluginMessage).pluginMessage,
       attachListener: (callback) => pluginApi.ui.on("message", callback),
@@ -21,8 +21,8 @@ export namespace Side {
     })
   );
 
-  export const SERVER = NetworkSide.register(
-    new NetworkSide("Server", {
+  export const SERVER = Networker.Side.register(
+    new Networker.Side("Server", {
       attachListener: () => {},
       detachListener: () => {},
     })

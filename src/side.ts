@@ -1,27 +1,29 @@
-import { NetworkMessageRegistry, TransportMessage } from "./message";
-import { NetworkTransports } from "./transport";
+import { MessageTypeRegistry, TransportMessage } from "./message";
+import { Transports } from "./transport";
 import { Consumer } from "./types";
 
-type ListenerDetachPredicate<T> = (message: TransportMessage<T>) => boolean;
+export type ListenerDetachPredicate<T> = (
+  message: TransportMessage<T>
+) => boolean;
 
-export class NetworkSide<E> {
-  private static currentSide: NetworkSide<any>;
+export class Side<E = any> {
+  private static currentSide: Side;
 
   public static get current() {
-    return NetworkSide.currentSide;
+    return Side.currentSide;
   }
   public static set current(side) {
-    if (NetworkSide.currentSide != null) {
+    if (Side.currentSide != null) {
       throw new Error("Logical side can be declared only once.");
     }
-    NetworkSide.currentSide = side;
+    Side.currentSide = side;
   }
 
   /* ------------------------ */
 
-  private static sides: Map<string, NetworkSide<any>> = new Map();
+  private static sides: Map<string, Side> = new Map();
 
-  public static register(side: NetworkSide<any>) {
+  public static register(side: Side) {
     this.sides.set(side.getName(), side);
     return side;
   }
@@ -45,7 +47,7 @@ export class NetworkSide<E> {
   }
 
   public beginListening(
-    forMessages: NetworkMessageRegistry | null,
+    forMessages: MessageTypeRegistry | null,
     until?: ListenerDetachPredicate<E>
   ) {
     const callback = (event: E) => {
@@ -63,11 +65,11 @@ export class NetworkSide<E> {
         if (messageType == null) {
           console.warn("Unknown message received ->", transportMessage.type);
         } else {
-          const from = NetworkSide.byName(transportMessage.from)!;
+          const from = Side.byName(transportMessage.from)!;
           const response = messageType.handle(transportMessage.payload, from);
           if (response !== undefined) {
-            const currentSide = NetworkSide.current;
-            const delegate = NetworkTransports.getDelegate(currentSide, from);
+            const currentSide = Side.current;
+            const delegate = Transports.getDelegate(currentSide, from);
             delegate?.({
               from: from.getName(),
               type: "response",

@@ -1,8 +1,8 @@
 import { initializeNetwork } from "../common/network/init";
 import { NetworkMessages } from "../common/network/messages";
-import { Side } from "../common/network/sides";
+import { NetworkSide } from "../common/network/sides";
 
-initializeNetwork(Side.PLUGIN);
+initializeNetwork(NetworkSide.PLUGIN);
 
 NetworkMessages.DISPLAY_POPUP.send({
   title: "Hello There!",
