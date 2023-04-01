@@ -51,7 +51,11 @@ export class Side<E = any> {
     until?: ListenerDetachPredicate<E>
   ) {
     const callback = (event: E) => {
-      if (!this.definitions.shouldHandle?.(event)) return;
+      if (this.definitions.shouldHandle != null) {
+        if (!this.definitions.shouldHandle(event)) {
+          return;
+        }
+      }
 
       const transportMessage =
         this.definitions.messageGetter?.(event) ??
