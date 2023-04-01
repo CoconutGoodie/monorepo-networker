@@ -1,0 +1,54 @@
+{
+  "name": "monorepo-networker",
+  "version": "1.0.0-alpha",
+  "description": "This is a simple utility package",
+  "author": {
+    "name": "Taha Anılcan Metinyurt - iGoodie",
+    "url": "https://github.com/iGoodie",
+    "email": "igoodie@programmer.net"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CoconutGoodie/monorepo-networker.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CoconutGoodie/monorepo-networker/issues"
+  },
+  "keywords": [
+    "ipc",
+    "abstraction",
+    "network",
+    "message",
+    "listener"
+  ],
+  "type": "module",
+  "main": "./dist/monorepo-networker.umd.cjs",
+  "module": "./dist/monorepo-networker.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/monorepo-networker.js",
+      "require": "./dist/monorepo-networker.umd.cjs"
+    }
+  },
+  "files": [
+    "dist/"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.62.0",
+    "@types/node": "^18.15.11",
+    "@types/uuid": "^9.0.1",
+    "typescript": "^4.9.3",
+    "vite": "^4.2.0",
+    "vite-plugin-dts": "^2.1.0"
+  },
+  "dependencies": {
+    "uuid": "^9.0.0"
+  }
+}
