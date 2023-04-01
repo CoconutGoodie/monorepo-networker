@@ -1,6 +1,6 @@
 {
   "name": "monorepo-networker",
-  "version": "1.1.0-alpha",
+  "version": "1.2.0-alpha",
   "description": "This is a simple utility package",
   "author": {
     "name": "Taha Anılcan Metinyurt - iGoodie",
@@ -38,7 +38,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "prepublish": "npm run build"
   },
   "devDependencies": {
     "@figma/plugin-typings": "^1.62.0",
