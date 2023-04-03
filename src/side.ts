@@ -70,16 +70,22 @@ export class Side<E = any> {
           console.warn("Unknown message received ->", transportMessage.type);
         } else {
           const from = Side.byName(transportMessage.from)!;
-          const response = messageType.handle(transportMessage.payload, from);
-          if (response !== undefined) {
-            const currentSide = Side.current;
-            const delegate = Transports.getDelegate(currentSide, from);
-            delegate?.({
-              from: from.getName(),
-              type: "response",
-              requestId: transportMessage.requestId,
-              payload: response,
-            } as TransportMessage<typeof response>);
+          const result = messageType.handle(transportMessage.payload, from);
+          if (result !== undefined) {
+            const sendResponse = (response: any) => {
+              const currentSide = Side.current;
+              const delegate = Transports.getDelegate(currentSide, from);
+              delegate?.({
+                from: from.getName(),
+                type: "response",
+                requestId: transportMessage.requestId,
+                payload: response,
+              } as TransportMessage<typeof response>);
+            };
+            // If promise, invoke with resolved value
+            "then" in result
+              ? (result as Promise<any>).then(sendResponse)
+              : sendResponse(result);
           }
         }
       }
