@@ -3,9 +3,11 @@
   <picture>
     <source 
       media="(prefers-color-scheme: dark)" 
+      height="150px"
       srcset="https://raw.githubusercontent.com/CoconutGoodie/monorepo-networker/master/.github/assets/light-logo.svg" />
     <img 
       src   ="https://raw.githubusercontent.com/CoconutGoodie/monorepo-networker/master/.github/assets/dark-logo.svg" 
+      height="150px"
       alt   =""/>
   </picture>
 </p>
