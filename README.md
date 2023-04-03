@@ -77,7 +77,7 @@ export namespace NetworkSide {
 - `shouldHandle?:` declares a predicate function, that determines whether incoming event is a network message we are interested in or not
 - `messageGetter?:` there may be cases where the incoming event is not the actual message, but rather a wrapper around it. To handle such cases, this function specifies how to extract the message from the wrapper.
 
-2. Create 2 test messages. We'll create a `HelloMessage` that emits a message to the other side, and other side prints out incoming data. And we'll create a `PingServerMessae` that will respond with "Pong!" to the requesting side. Create your messages under `/common/messages/HelloMessage.ts`:
+2. Create 2 test messages. We'll create a `HelloMessage` that emits a message to the other side, and other side prints out incoming data. And we'll create a `PingServerMessae` that will respond with "Pong!" to the requesting side. Create your messages under `/common/network/messages/HelloMessage.ts`:
 
 ```ts
 import * as Networker from "monorepo-networker";
@@ -101,7 +101,7 @@ export class HelloMessage extends Networker.MessageType<Payload> {
 }
 ```
 
-and `/common/messages/PingServerMessage.ts`:
+and `/common/network/messages/PingServerMessage.ts`:
 
 ```ts
 import * as Networker from "monorepo-networker";
@@ -111,7 +111,10 @@ interface Payload {}
 
 type Response = string;
 
-export class PingMessage extends Networker.MessageType<Payload, Response> {
+export class PingServerMessage extends Networker.MessageType<
+  Payload,
+  Response
+> {
   receivingSide(): Networker.Side {
     return NetworkSide.SERVER;
   }
@@ -130,7 +133,30 @@ export class PingMessage extends Networker.MessageType<Payload, Response> {
 >
 > Some messages can present a response, where some do not. In that case, you should declare a `Response` type representing what does the handler respond with. This then later be used with `Network.MessageType::request`, we'll cover in next steps.
 
-<!-- 2. Declare how sides can communicate with each other by creating an initializer with transport declarations under `/common/init.ts`:
+3. Create a registry to stored message types under `/common/network/messages.ts`
+
+```ts
+import * as Networker from "monorepo-networker";
+import { NetworkSide } from "@common/network/sides";
+import { HelloMessage } from "@common/network/messages/HelloMessage";
+import { PingServerMessage } from "@common/network/messages/PingServerMessage";
+
+export namespace NetworkMessages {
+  export const registry = new Networker.MessageTypeRegistry();
+
+  export const HELLO_SERVER = registry.register(
+    new HelloMessage(NetworkSide.SERVER)
+  );
+
+  export const HELLO_CLIENT = registry.register(
+    new HelloMessage(NetworkSide.CLIENT)
+  );
+
+  export const PING = registry.register(new PingMessage("ping"));
+}
+```
+
+4. Finally create an initializer, which also declares how sides communicate with each other. We'll call this initializer on each side later on. Create it under `/common/network/init.ts`:
 
 ```ts
 import * as Networker from "monorepo-networker";
@@ -141,13 +167,64 @@ export const initializeNetwork = Networker.createInitializer({
   messagesRegistry: NetworkMessages.registry,
 
   initTransports: function (register) {
-    register(NetworkSide.PLUGIN, NetworkSide.UI, (message) => {
-      figma.ui.postMessage(message);
+    // Declaring how a message is transported from server to client
+    register(NetworkSide.SERVER, NetworkSide.CLIENT, (message) => {
+      server.sendMessage(message); // <-- Totally arbitrary
     });
 
-    register(NetworkSide.UI, NetworkSide.PLUGIN, (message) => {
-      parent.postMessage({ pluginMessage: message }, "*");
+    // Declaring how a message is transported from client to server
+    register(NetworkSide.CLIENT, NetworkSide.SERVER, (message) => {
+      parent.postMessage({ pluginMessage: message }, "*"); // <-- Totally arbitrary
     });
   },
 });
-``` -->
+```
+
+5. Once done with setting up the common base, we can hop to entry points of each side. We'll need to initialize our network on each side.
+
+`server/main.ts`
+
+```ts
+import { initializeNetwork } from "@common/network/init";
+import { NetworkSide } from "@common/network/sides";
+import { NetworkMessages } from "@common/network/messages";
+
+async function bootstrap() {
+  initializeNetwork(NetworkSide.SERVER);
+
+  // ... Omitted code that bootstraps the server
+
+  NetworkMessages.HELLO_CLIENT.send({ text: "Hey there, Client!" });
+}
+
+bootstrap();
+```
+
+`client/main.ts`
+
+```ts
+import { initializeNetwork } from "@common/network/init";
+import { NetworkMessages } from "@common/network/messages";
+import { NetworkSide } from "@common/network/sides";
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./app";
+
+initializeNetwork(NetworkSide.UI);
+
+const rootElement = document.getElementById("root") as HTMLElement;
+const root = ReactDOM.createRoot(rootElement);
+
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+
+NetworkMessages.HELLO_SERVER.send({ text: "Hey there, Server!" });
+
+// Notice this one returns a Promise<T>
+NetworkMessages.PING.request({}).then((response) => {
+  console.log('Server responded with "' + response + '" !');
+});
+```
