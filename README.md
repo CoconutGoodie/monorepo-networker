@@ -77,4 +77,77 @@ export namespace NetworkSide {
 - `shouldHandle?:` declares a predicate function, that determines whether incoming event is a network message we are interested in or not
 - `messageGetter?:` there may be cases where the incoming event is not the actual message, but rather a wrapper around it. To handle such cases, this function specifies how to extract the message from the wrapper.
 
-2. todo
+2. Create 2 test messages. We'll create a `HelloMessage` that emits a message to the other side, and other side prints out incoming data. And we'll create a `PingServerMessae` that will respond with "Pong!" to the requesting side. Create your messages under `/common/messages/HelloMessage.ts`:
+
+```ts
+import * as Networker from "monorepo-networker";
+
+interface Payload {
+  text: string;
+}
+
+export class HelloMessage extends Networker.MessageType<Payload> {
+  constructor(private side: Networker.Side) {
+    super("hello-" + side.getName());
+  }
+
+  receivingSide(): Networker.Side {
+    return this.side;
+  }
+
+  handle(payload: Payload, from: Networker.Side) {
+    console.log(`${from.getName()} said "${payload.text}"`);
+  }
+}
+```
+
+and `/common/messages/PingServerMessage.ts`:
+
+```ts
+import * as Networker from "monorepo-networker";
+import { NetworkSide } from "@common/network/sides";
+
+interface Payload {}
+
+type Response = string;
+
+export class PingMessage extends Networker.MessageType<Payload, Response> {
+  receivingSide(): Networker.Side {
+    return NetworkSide.SERVER;
+  }
+
+  handle(payload: Payload, from: Networker.Side): string {
+    console.log(from.getName(), "has pinged us!");
+    return `Pong, ${from.getName()}!`;
+  }
+}
+```
+
+> <picture>
+>   <source media="(prefers-color-scheme: light)" srcset="https://github.com/Mqxx/GitHub-Markdown/blob/main/blockquotes/badge/light-theme/tip.svg">
+>   <img alt="Tip" src="https://github.com/Mqxx/GitHub-Markdown/blob/main/blockquotes/badge/dark-theme/tip.svg">
+> </picture><br>
+>
+> Some messages can present a response, where some do not. In that case, you should declare a `Response` type representing what does the handler respond with. This then later be used with `Network.MessageType::request`, we'll cover in next steps.
+
+<!-- 2. Declare how sides can communicate with each other by creating an initializer with transport declarations under `/common/init.ts`:
+
+```ts
+import * as Networker from "monorepo-networker";
+import { NetworkMessages } from "@common/network/messages";
+import { NetworkSide } from "@common/network/sides";
+
+export const initializeNetwork = Networker.createInitializer({
+  messagesRegistry: NetworkMessages.registry,
+
+  initTransports: function (register) {
+    register(NetworkSide.PLUGIN, NetworkSide.UI, (message) => {
+      figma.ui.postMessage(message);
+    });
+
+    register(NetworkSide.UI, NetworkSide.PLUGIN, (message) => {
+      parent.postMessage({ pluginMessage: message }, "*");
+    });
+  },
+});
+``` -->
