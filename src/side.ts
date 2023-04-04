@@ -68,7 +68,9 @@ export class Side<E = any> {
         );
 
         if (messageType == null) {
-          console.warn("Unknown message received ->", transportMessage.type);
+          if (forMessages != null) {
+            console.warn("Unknown message received ->", transportMessage.type);
+          }
         } else {
           const from = Side.byName(transportMessage.from)!;
           const result = messageType.handle(transportMessage.payload, from);
