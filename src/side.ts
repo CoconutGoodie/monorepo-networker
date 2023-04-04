@@ -61,6 +61,7 @@ export class Side<E = any> {
         this.definitions.messageGetter?.(event) ??
         (event as TransportMessage<any>);
 
+      // Handle if it isn't a response
       if (transportMessage.type !== "response") {
         const messageType = forMessages?.byName(
           transportMessage.type as string
@@ -76,14 +77,15 @@ export class Side<E = any> {
               const currentSide = Side.current;
               const delegate = Transports.getDelegate(currentSide, from);
               delegate?.({
-                from: from.getName(),
+                from: Side.current.getName(),
                 type: "response",
                 requestId: transportMessage.requestId,
                 payload: response,
               } as TransportMessage<typeof response>);
             };
+
             // If promise, invoke with resolved value
-            "then" in result
+            typeof result?.then === "function"
               ? (result as Promise<any>).then(sendResponse)
               : sendResponse(result);
           }

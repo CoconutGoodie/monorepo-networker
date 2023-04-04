@@ -31,10 +31,9 @@ export abstract class MessageType<P, R = void> {
     };
   }
 
-  public send(payload: P) {
+  private sendTransportMessage<P>(message: TransportMessage<P>) {
     const currentSide = Side.current;
     const receivingSide = this.receivingSide();
-    const message = this.createTransportMessage(payload);
     const delegate = Transports.getDelegate(currentSide, receivingSide);
 
     if (!delegate) {
@@ -48,18 +47,27 @@ export abstract class MessageType<P, R = void> {
     return message;
   }
 
-  public async request(payload: P): Promise<R> {
-    const sentMessage = this.send(payload);
+  public send(payload: P) {
+    const message = this.createTransportMessage(payload);
+    return this.sendTransportMessage(message);
+  }
 
-    return new Promise<R>((resolve) => {
+  public async request(payload: P): Promise<R> {
+    const messageToBeSent = this.createTransportMessage(payload);
+
+    const res = new Promise<R>((resolve) => {
       Side.current.beginListening(null, (message: TransportMessage<R>) => {
-        if (message.requestId === sentMessage.requestId) {
+        if (message.requestId === messageToBeSent.requestId) {
           resolve(message.payload);
           return true;
         }
         return false;
       });
     });
+
+    this.sendTransportMessage(messageToBeSent);
+
+    return res;
   }
 }
 
