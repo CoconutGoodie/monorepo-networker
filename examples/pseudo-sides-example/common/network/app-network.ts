@@ -11,10 +11,11 @@ export const AppNetwork = new MonorepoNetworker()
 
   .defineEvents({ from: "Client", to: "UI" })<{
     focusOnSelected(): void;
+    focusOnElement(elementId: string): void;
   }>()
 
   .defineEvents({ from: "UI", to: "Client" })<{
-    createSquare(len: number): void;
+    createSquare(length: number): void;
   }>()
 
   .defineEndpoints({ requester: "Client", responder: "Server" })<{
@@ -25,9 +26,10 @@ export const AppNetwork = new MonorepoNetworker()
 
   .build();
 
-// client.ts
+// client/network/channel.ts
 
-AppNetwork.initialize(AppNetwork.Side.CLIENT, {
+export const ClientChannel = AppNetwork.initializeChannel({
+  side: AppNetwork.Side.CLIENT,
   transports: {
     Server: {
       attachMessageListener: (callback) => {
@@ -47,4 +49,33 @@ AppNetwork.initialize(AppNetwork.Side.CLIENT, {
   },
 });
 
-// AppNetwork.dispatch("Client");
+// server/network/channel.ts
+
+export const ServerChannel = AppNetwork.initializeChannel({
+  side: "Server",
+  transports: {},
+});
+
+ServerChannel.registerRequestHandler("Client", "getUser", (userId) => {
+  console.log("LOOKUP", userId);
+  return {
+    username: "1234",
+  };
+});
+
+// client/client.ts
+
+async function bootstrap() {
+  ClientChannel.dispatchEvent("UI", "focusOnSelected");
+  ClientChannel.dispatchEvent("UI", "focusOnElement", "ABC-01");
+
+  ClientChannel.subscribeEventListener("Server", "execute", (script) => {
+    console.log("EXEC", script);
+  });
+
+  ClientChannel.request("Server", "getUser", "USR-01")
+    .then((user) => console.log(user.username))
+    .catch((err) => console.log(err));
+}
+
+bootstrap();
