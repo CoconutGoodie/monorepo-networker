@@ -56,7 +56,7 @@ export const ServerChannel = AppNetwork.initializeChannel({
   transports: {},
 });
 
-ServerChannel.registerRequestHandler("Client", "getUser", (userId) => {
+ServerChannel.addRequestHandler("Client", "getUser", (userId) => {
   console.log("LOOKUP", userId);
   return {
     username: "1234",
@@ -69,7 +69,7 @@ async function bootstrap() {
   ClientChannel.dispatchEvent("UI", "focusOnSelected");
   ClientChannel.dispatchEvent("UI", "focusOnElement", "ABC-01");
 
-  ClientChannel.subscribeEventListener("Server", "execute", (script) => {
+  ClientChannel.addEventListener("Server", "execute", (script) => {
     console.log("EXEC", script);
   });
 

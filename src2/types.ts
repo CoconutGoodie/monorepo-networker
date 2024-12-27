@@ -7,5 +7,5 @@ export type PrettifyDeep<T> = {
 } & unknown;
 
 export type EnumOf<T extends readonly string[]> = Prettify<{
-  [K in T[number] as Uppercase<K>]: K;
+  readonly [K in T[number] as Uppercase<K>]: K;
 }>;

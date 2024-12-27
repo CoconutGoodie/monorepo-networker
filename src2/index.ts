@@ -49,7 +49,7 @@ export class MonorepoNetworker<
   TEventMessages extends ChannelRegistry<TSides> = {},
   TRequestMessages extends ChannelRegistry<TSides> = {}
 > {
-  public Side: Readonly<EnumOf<TSides>>;
+  public Side: EnumOf<TSides>;
 
   private _currentSide: TSides[number];
   private _channelOptions: ChannelOptions<TSides, TCurrentSide>;
@@ -132,19 +132,19 @@ export class MonorepoNetworker<
   }
 
   public request<
-    TToSide extends Exclude<TSides[number], TCurrentSide> = never,
+    TResponderSide extends Exclude<TSides[number], TCurrentSide> = never,
     TEventName extends keyof ChannelFn<
       TRequestMessages,
       TCurrentSide,
-      TToSide
+      TResponderSide
     > = never,
     TEventMessage = ChannelFn<
       TRequestMessages,
       TCurrentSide,
-      TToSide
+      TResponderSide
     >[TEventName]
   >(
-    toSide: TToSide,
+    responderSide: TResponderSide,
     eventName: TEventName,
     ...args: TEventMessage extends (...args: any) => any
       ? Parameters<TEventMessage>
@@ -156,8 +156,8 @@ export class MonorepoNetworker<
         : never
     >;
   }
-
-  public subscribeEventListener<
+  
+  public addEventListener<
     TFromSide extends Exclude<TSides[number], TCurrentSide> = never,
     TEventName extends keyof ChannelFn<
       TEventMessages,
@@ -171,7 +171,7 @@ export class MonorepoNetworker<
     >[TEventName]
   >(fromSide: TFromSide, eventName: TEventName, callback: TEventMessage) {}
 
-  public registerRequestHandler<
+  public addRequestHandler<
     TFromSide extends Exclude<TSides[number], TCurrentSide> = never,
     TRequestName extends keyof ChannelFn<
       TRequestMessages,
