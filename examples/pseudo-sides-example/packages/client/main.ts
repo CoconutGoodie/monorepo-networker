@@ -15,6 +15,13 @@ async function bootstrap() {
 
   const serverTime = await CLIENT_CHANNEL.request(SERVER, "getServerTime");
   console.log(serverTime);
+
+  const unsub = CLIENT_CHANNEL.subscribe("execute", (script, from) => {
+    console.log("Gotta execute script", from.name);
+    eval(script);
+  });
+
+  setTimeout(() => unsub(), 5000);
 }
 
 bootstrap();

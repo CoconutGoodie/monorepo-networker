@@ -22,6 +22,13 @@ type MessageHandler<TEvents extends NetworkEvents, E extends keyof TEvents> = (
   ...args: [...Parameters<TEvents[E]>, ...[from: NetworkSide<any>]]
 ) => ReturnType<TEvents[E]>;
 
+type SubscriptionHandler<
+  TEvents extends NetworkEvents,
+  E extends keyof TEvents
+> = (
+  ...args: [...Parameters<TEvents[E]>, ...[from: NetworkSide<any>]]
+) => undefined;
+
 export type ChannelConfig = {
   /**
    *
@@ -38,6 +45,9 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
   protected listenerRef?: TListenerRef;
   protected messageHandlers: {
     [K in keyof TEvents]?: MessageHandler<TEvents, K>;
+  } = {};
+  protected subscriptionHandlers: {
+    [K in keyof TEvents]?: Record<string, SubscriptionHandler<TEvents, K>>;
   } = {};
   protected emitStrategies: Map<string, MessageConsumer> = new Map();
   protected pendingRequests: Map<string, any> = new Map();
@@ -90,6 +100,15 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
       }
       return;
     }
+
+    Object.values(this.subscriptionHandlers[message.eventName] ?? {}).forEach(
+      (subscriptionHandler) => {
+        subscriptionHandler(
+          ...(message.payload as never),
+          MonorepoNetworker.getSide(message.fromSide)
+        );
+      }
+    );
 
     const handler = this.messageHandlers[message.eventName];
     if (handler != null) {
@@ -144,5 +163,19 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
         payload: eventArgs,
       });
     });
+  }
+
+  public subscribe<E extends keyof TrimMethodsReturning<TEvents, {}>>(
+    eventName: E,
+    eventHandler: SubscriptionHandler<TEvents, E>
+  ) {
+    const subId = uuidV4();
+
+    this.subscriptionHandlers[eventName] ??= {};
+    this.subscriptionHandlers[eventName][subId] = eventHandler;
+
+    return () => {
+      delete this.subscriptionHandlers[eventName]![subId];
+    };
   }
 }
