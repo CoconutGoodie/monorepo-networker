@@ -1,6 +1,6 @@
 import { MonorepoNetworker } from "./networker";
 import { NetworkEvents, NetworkSide } from "./side";
-import { TrimMethodsReturning } from "./TypeUtils";
+import { TrimMethodsReturning } from "./types";
 import { uuidV4 } from "./util/uuid_v4";
 
 const INTERNAL_RESPOND_EVENT = "__INTERNAL_RESPOND_EVENT";

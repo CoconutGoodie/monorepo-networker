@@ -18,10 +18,10 @@ export const CLIENT_CHANNEL = CLIENT.createChannel({
 // ----------- Transports
 
 CLIENT_CHANNEL.registerEmitStrategy(UI, (message) => {
-  console.log("Sending to UI", message);
+  parent.postMessage({ pluginMessage: message }, "*");
 });
 CLIENT_CHANNEL.registerEmitStrategy(SERVER, (message) => {
-  parent.postMessage({ pluginMessage: message }, "*");
+  fetch("server://", { method: "POST", body: JSON.stringify(message) });
 });
 
 // ----------- Message Handlers
