@@ -4,7 +4,7 @@ import { CLIENT_CHANNEL } from "./networkChannel";
 
 MonorepoNetworker.initialize(CLIENT, CLIENT_CHANNEL);
 
-console.log("We're at", MonorepoNetworker.currentSide);
+console.log("We're at", MonorepoNetworker.getCurrentSide().name);
 
 async function bootstrap() {
   CLIENT_CHANNEL.emit(SERVER, "markPresence", true);

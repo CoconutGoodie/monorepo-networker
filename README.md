@@ -132,6 +132,7 @@ CLIENT_CHANNEL.registerMessageHandler("hello", (text, from) => {
   console.log(from.name, "said:", text);
 });
 CLIENT_CHANNEL.registerMessageHandler("getClientTime", () => {
+  // Returning a value will make this event "request-able"
   return Date.now();
 });
 ```
@@ -139,6 +140,9 @@ CLIENT_CHANNEL.registerMessageHandler("getClientTime", () => {
 ## 3. Initialize & Invoke
 
 Initialize each side in their entry point. And enjoy the standardized messaging api!
+
+- `Channel::emit` will emit given event to the given side
+- `Channel::request` will emit given event to the given side, and wait for a response from the target side.
 
 ```ts
 // ./packages/server/main.ts
@@ -148,6 +152,8 @@ import { SERVER_CHANNEL } from "@server/networkChannel";
 
 async function bootstrap() {
   MonorepoNetworker.initialize(SERVER, SERVER_CHANNEL);
+
+  console.log("We are @", MonorepoNetworker.getCurrentSide().name);
 
   // ... Omitted code that bootstraps the server
 
@@ -167,6 +173,8 @@ import ReactDOM from "react-dom/client";
 import App from "./app";
 
 MonorepoNetworker.initialize(CLIENT, CLIENT_CHANNEL);
+
+console.log("We are @", MonorepoNetworker.getCurrentSide().name);
 
 const rootElement = document.getElementById("root") as HTMLElement;
 const root = ReactDOM.createRoot(rootElement);

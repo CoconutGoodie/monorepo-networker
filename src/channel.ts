@@ -6,9 +6,13 @@ import { uuidV4 } from "./util/uuid_v4";
 const INTERNAL_RESPOND_EVENT = "__INTERNAL_RESPOND_EVENT";
 
 export interface NetworkMessage {
+  /** UUIDv4 ID issues for this message */
   messageId: string;
+  /** Name of the logical side, which created this message */
   fromSide: string;
+  /** Name of the event */
   eventName: string;
+  /** Arguments of the event */
   payload: any[];
 }
 
@@ -19,7 +23,15 @@ type MessageHandler<TEvents extends NetworkEvents, E extends keyof TEvents> = (
 ) => ReturnType<TEvents[E]>;
 
 export type ChannelConfig = {
-  attachListener?: (next: MessageConsumer) => (() => void) | void;
+  /**
+   *
+   * @param next x
+   * @returns
+   */
+  attachListener?: (
+    /** xxx */
+    next: MessageConsumer
+  ) => (() => void) | void;
 };
 
 export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
@@ -60,7 +72,7 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
     const strategy = this.emitStrategies.get(sideName);
 
     if (!strategy) {
-      const currentSide = MonorepoNetworker.currentSide;
+      const currentSide = MonorepoNetworker.getCurrentSide();
       throw new Error(
         `No emit strategy is registered from ${currentSide.name} to ${sideName}`
       );
@@ -108,7 +120,7 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
 
     emit({
       messageId: uuidV4(),
-      fromSide: MonorepoNetworker.currentSide.name,
+      fromSide: MonorepoNetworker.getCurrentSide().name,
       eventName: eventName.toString(),
       payload: eventArgs,
     });
@@ -127,7 +139,7 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
 
       emit({
         messageId,
-        fromSide: MonorepoNetworker.currentSide.name,
+        fromSide: MonorepoNetworker.getCurrentSide().name,
         eventName: eventName.toString(),
         payload: eventArgs,
       });
