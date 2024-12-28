@@ -21,14 +21,14 @@ export class NetworkHandler<TEvents extends AcceptedEvents, TListenerRef> {
   protected pendingRequests: Map<string, any> = new Map();
 
   constructor(
-    private readonly side: NetworkSide<TEvents>,
-    private readonly config?: {
+    public readonly side: NetworkSide<TEvents>,
+    protected readonly config?: {
       attachListener?: (next: MessageConsumer) => TListenerRef;
       detachListener?: (ref: TListenerRef) => void;
     }
   ) {}
 
-  private init() {
+  protected init() {
     this.listenerRef = this.config?.attachListener?.(
       this.receiveNetworkerMessage
     );
@@ -45,9 +45,9 @@ export class NetworkHandler<TEvents extends AcceptedEvents, TListenerRef> {
     this.messageHandlers[eventName] = handler;
   }
 
-  private getEmitStrategy(side: string): MessageConsumer;
-  private getEmitStrategy(side: NetworkSide<any>): MessageConsumer;
-  private getEmitStrategy(side: any) {
+  protected getEmitStrategy(side: string): MessageConsumer;
+  protected getEmitStrategy(side: NetworkSide<any>): MessageConsumer;
+  protected getEmitStrategy(side: any) {
     const sideName = side instanceof NetworkSide ? side.name : side;
     const strategy = this.emitStrategies.get(sideName);
 
@@ -61,7 +61,7 @@ export class NetworkHandler<TEvents extends AcceptedEvents, TListenerRef> {
     return strategy;
   }
 
-  private receiveNetworkerMessage(message: NetworkMessage) {
+  protected receiveNetworkerMessage(message: NetworkMessage) {
     if (message.eventName === INTERNAL_RESPOND_EVENT) {
       const resolveValue = this.pendingRequests.get(message.messageId);
       this.pendingRequests.delete(message.messageId);

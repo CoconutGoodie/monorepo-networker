@@ -1,4 +1,4 @@
-import { MonorepoNetworker } from "../../../src3";
+import { MonorepoNetworker } from "../../../src";
 import { CLIENT, SERVER } from "../common/network/sides";
 import { CLIENT_CHANNEL } from "./network/clientChannel";
 

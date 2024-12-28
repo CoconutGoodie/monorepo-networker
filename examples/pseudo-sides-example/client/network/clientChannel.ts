@@ -1,4 +1,4 @@
-import { NetworkHandler } from "../../../../src3";
+import { NetworkHandler } from "../../../../src";
 import { CLIENT, SERVER, UI } from "../../common/network/sides";
 
 export const CLIENT_CHANNEL = new NetworkHandler(CLIENT, {

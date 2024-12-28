@@ -1,4 +1,4 @@
-import { NetworkSide } from "../../../../src3";
+import { NetworkSide } from "../../../../src";
 
 export const UI = new NetworkSide<{
   focusOnSelected(): void;
@@ -15,3 +15,7 @@ export const SERVER = new NetworkSide<{
   fetchUser(userId: string): { id: string; name: string };
   markPresence(online: boolean): void;
 }>("Server-side");
+
+export const WORKER_SERVER = SERVER.extend<{
+  work(): void;
+}>("WorkerServer-side");
