@@ -58,7 +58,9 @@ This library assumes your codebase is a monorepo that has distinct sides sharing
 |  |- server
 ```
 
-1. Start by creating sides and defining the events they can receive.
+## 1. Define the Sides
+
+Start by creating sides and defining the events they can receive.
 
 ```ts
 // ./common/networkSides.ts
@@ -89,7 +91,11 @@ export const SERVER = MonorepoNetworker.createSide<{
 > Side objects created here are supposed to be used across different side runtimes.
 > Make sure **NOT** to use anything side-dependent in here.
 
-2. Create the channels for each side. Channels are responsible of communicating with other sides and listening to incoming messages using the registered strategies. (Only the code for CLIENT side is shown, for simplicity.)
+## 2. Create the Channels
+
+Create the channels for each side. Channels are responsible of communicating with other sides and listening to incoming messages using the registered strategies.
+
+(Only the code for CLIENT side is shown, for simplicity.)
 
 ```ts
 // ./packages/client/networkChannel.ts
@@ -130,7 +136,9 @@ CLIENT_CHANNEL.registerMessageHandler("getClientTime", () => {
 });
 ```
 
-3. Initialize each side in their entry point. And enjoy the standardized messaging api!
+## 3. Initialize & Invoke
+
+Initialize each side in their entry point. And enjoy the standardized messaging api!
 
 ```ts
 // ./packages/server/main.ts
