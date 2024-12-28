@@ -1,16 +1,16 @@
-import { NetworkSide } from "../../../../src";
+import { MonorepoNetworker } from "../../../src";
 
-export const UI = new NetworkSide<{
+export const UI = MonorepoNetworker.createSide<{
   focusOnSelected(): void;
   focusOnElement(elementId: string): void;
 }>("UI-side");
 
-export const CLIENT = new NetworkSide<{
+export const CLIENT = MonorepoNetworker.createSide<{
   getClientTime(): number;
   execute(script: string): void;
 }>("Client-side");
 
-export const SERVER = new NetworkSide<{
+export const SERVER = MonorepoNetworker.createSide<{
   getServerTime(): number;
   fetchUser(userId: string): { id: string; name: string };
   markPresence(online: boolean): void;

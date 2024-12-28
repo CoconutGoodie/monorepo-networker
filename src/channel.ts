@@ -1,5 +1,5 @@
 import { MonorepoNetworker } from "./networker";
-import { AcceptedEvents, NetworkSide } from "./side";
+import { NetworkEvents, NetworkSide } from "./side";
 import { TrimMethodsReturning } from "./TypeUtils";
 import { uuidV4 } from "./util/uuid_v4";
 
@@ -14,23 +14,31 @@ export interface NetworkMessage {
 
 type MessageConsumer = (message: NetworkMessage) => void;
 
-export class NetworkHandler<TEvents extends AcceptedEvents, TListenerRef> {
+type MessageHandler<TEvents extends NetworkEvents, E extends keyof TEvents> = (
+  ...args: [...Parameters<TEvents[E]>, ...[from: NetworkSide<any>]]
+) => ReturnType<TEvents[E]>;
+
+export type ChannelConfig = {
+  attachListener?: (next: MessageConsumer) => (() => void) | void;
+};
+
+export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
   protected listenerRef?: TListenerRef;
-  protected messageHandlers: { [K in keyof TEvents]?: TEvents[K] } = {};
+  protected messageHandlers: {
+    [K in keyof TEvents]?: MessageHandler<TEvents, K>;
+  } = {};
   protected emitStrategies: Map<string, MessageConsumer> = new Map();
   protected pendingRequests: Map<string, any> = new Map();
+  protected listenerCleanup?: (() => void) | void;
 
   constructor(
     public readonly side: NetworkSide<TEvents>,
-    protected readonly config?: {
-      attachListener?: (next: MessageConsumer) => TListenerRef;
-      detachListener?: (ref: TListenerRef) => void;
-    }
+    protected readonly config?: ChannelConfig
   ) {}
 
   protected init() {
-    this.listenerRef = this.config?.attachListener?.(
-      this.receiveNetworkerMessage
+    this.listenerCleanup = this.config?.attachListener?.(
+      (message: NetworkMessage) => this.receiveNetworkMessage(message)
     );
   }
 
@@ -40,7 +48,7 @@ export class NetworkHandler<TEvents extends AcceptedEvents, TListenerRef> {
 
   public registerMessageHandler<E extends keyof TEvents>(
     eventName: E,
-    handler: TEvents[E]
+    handler: MessageHandler<TEvents, E>
   ) {
     this.messageHandlers[eventName] = handler;
   }
@@ -61,32 +69,40 @@ export class NetworkHandler<TEvents extends AcceptedEvents, TListenerRef> {
     return strategy;
   }
 
-  protected receiveNetworkerMessage(message: NetworkMessage) {
+  protected receiveNetworkMessage(message: NetworkMessage) {
     if (message.eventName === INTERNAL_RESPOND_EVENT) {
       const resolveValue = this.pendingRequests.get(message.messageId);
-      this.pendingRequests.delete(message.messageId);
-      resolveValue(message.payload[0]);
+      if (resolveValue) {
+        this.pendingRequests.delete(message.messageId);
+        resolveValue(message.payload[0]);
+      }
       return;
     }
 
     const handler = this.messageHandlers[message.eventName];
-
     if (handler != null) {
-      const result = handler(...message.payload);
+      const result = handler(
+        ...(message.payload as never),
+        MonorepoNetworker.getSide(message.fromSide)
+      );
+
       const emit = this.getEmitStrategy(message.fromSide);
-      emit({
-        messageId: message.messageId,
-        fromSide: message.fromSide,
-        eventName: INTERNAL_RESPOND_EVENT,
-        payload: [result],
-      });
+
+      if (emit != null) {
+        emit({
+          messageId: message.messageId,
+          fromSide: message.fromSide,
+          eventName: INTERNAL_RESPOND_EVENT,
+          payload: [result],
+        });
+      }
     }
   }
 
-  public emit<T extends AcceptedEvents, E extends keyof T>(
+  public emit<T extends NetworkEvents, E extends keyof T>(
     targetSide: NetworkSide<T>,
     eventName: E,
-    eventArgs: Parameters<T[E]>
+    ...eventArgs: Parameters<T[E]>
   ) {
     const emit = this.getEmitStrategy(targetSide);
 
@@ -99,9 +115,9 @@ export class NetworkHandler<TEvents extends AcceptedEvents, TListenerRef> {
   }
 
   public async request<
-    T extends AcceptedEvents,
+    T extends NetworkEvents,
     E extends keyof TrimMethodsReturning<T, void>
-  >(targetSide: NetworkSide<T>, eventName: E, eventArgs: Parameters<T[E]>) {
+  >(targetSide: NetworkSide<T>, eventName: E, ...eventArgs: Parameters<T[E]>) {
     const emit = this.getEmitStrategy(targetSide);
 
     const messageId = uuidV4();

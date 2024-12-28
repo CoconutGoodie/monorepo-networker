@@ -1,17 +1,17 @@
-import { NetworkHandler } from "../../../../src";
-import { CLIENT, SERVER, UI } from "../../common/network/sides";
+import { CLIENT, SERVER, UI } from "../../common/networkSides";
 
-export const CLIENT_CHANNEL = new NetworkHandler(CLIENT, {
+export const CLIENT_CHANNEL = CLIENT.createChannel({
   attachListener(next) {
     const listener = (event: MessageEvent) => {
       if (event.data?.pluginId == null) return;
       next(event.data.pluginMessage);
     };
+
     window.addEventListener("message", listener);
-    return listener;
-  },
-  detachListener(listener) {
-    window.removeEventListener("message", listener);
+
+    return () => {
+      window.removeEventListener("message", listener);
+    };
   },
 });
 
@@ -26,7 +26,7 @@ CLIENT_CHANNEL.registerEmitStrategy(SERVER, (message) => {
 
 // ----------- Message Handlers
 
-CLIENT_CHANNEL.registerMessageHandler("execute", (script) => {
+CLIENT_CHANNEL.registerMessageHandler("execute", (script, from) => {
   eval(script);
 });
 CLIENT_CHANNEL.registerMessageHandler("getClientTime", () => {

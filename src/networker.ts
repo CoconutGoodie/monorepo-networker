@@ -1,7 +1,8 @@
-import { NetworkHandler } from "./handler";
-import { AcceptedEvents, NetworkSide } from "./side";
+import { NetworkChannel } from "./channel";
+import { NetworkEvents, NetworkSide } from "./side";
 
 export class MonorepoNetworker {
+  private static _sides: NetworkSide<any>[] = [];
   private static _currentSide: NetworkSide<any>;
 
   public static get currentSide() {
@@ -17,11 +18,24 @@ export class MonorepoNetworker {
     MonorepoNetworker._currentSide = side;
   }
 
-  public static initialize<T extends AcceptedEvents>(
+  public static initialize<T extends NetworkEvents>(
     side: NetworkSide<T>,
-    handler: NetworkHandler<T, any>
+    handler: NetworkChannel<T, any>
   ) {
     MonorepoNetworker.currentSide = side;
     handler["init"]();
+  }
+
+  public static createSide<TEvents extends NetworkEvents>(name: string) {
+    const side = new NetworkSide<TEvents>(name);
+    this._sides.push(side);
+    return side;
+  }
+
+  public static getSide(name: string) {
+    for (let side of this._sides) {
+      if (side.name === name) return side;
+    }
+    return null;
   }
 }
