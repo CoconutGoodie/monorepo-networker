@@ -5,6 +5,9 @@ export class MonorepoNetworker {
   private static _currentSide: NetworkSide<any>;
 
   public static get currentSide() {
+    if (MonorepoNetworker._currentSide == null) {
+      throw new Error("Logical side is not initialized yet.");
+    }
     return MonorepoNetworker._currentSide;
   }
   public static set currentSide(side) {
@@ -19,5 +22,6 @@ export class MonorepoNetworker {
     handler: NetworkHandler<T, any>
   ) {
     MonorepoNetworker.currentSide = side;
+    handler["init"]();
   }
 }
