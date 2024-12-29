@@ -44,7 +44,9 @@ Consider a scenario where you are maintaining a codebase that follows a monorepo
 
 # 🎁 Examples
 
-- [Simple Example](https://github.com/CoconutGoodie/monorepo-networker/tree/master/examples/simple): with 3 sides "Client", "Server" and "UI"
+- [Simple Example](https://github.com/CoconutGoodie/monorepo-networker/tree/master/examples/simple): with 3 mockup sides: midware "Client", HTTP "Server" and React "UI"
+- [Figma Plugin Example](): TODO
+- [FiveM Project Example](): TODO
 
 # 💻 How to use it?
 
@@ -178,7 +180,6 @@ import { CLIENT, SERVER } from "@common/networkSides";
 import { CLIENT_CHANNEL } from "@client/networkChannel";
 import React, { useEffect, useRef } from "react";
 import ReactDOM from "react-dom/client";
-import App from "./app";
 
 MonorepoNetworker.initialize(CLIENT, CLIENT_CHANNEL);
 
