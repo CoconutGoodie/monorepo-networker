@@ -40,7 +40,7 @@
 
 # 🧶 What is monorepo-networker?
 
-Consider a scenario where you are maintaining a codebase that follows a monorepo pattern and houses an IPC-like communication mechanism between ends/sides, much like [FiveM's scripting SDK](https://docs.fivem.net/docs/scripting-reference/) and [Figma's plugin API](https://www.figma.com/plugin-docs/). In such a situation, you may find yourself dealing with numerous boilerplate code just to ensure that you are sending the right data under the correct title. The primary aim of this library is to streamline this process by abstracting away the transport strategies between sides, thereby standardizing the process.
+Consider a scenario where you maintain a codebase following the monorepo pattern, with an IPC-esque communication mechanism between sides—similar to [FiveM's Scripting SDK](https://www.figma.com/plugin-docs/) or [Figma's Plugin API](https://docs.fivem.net/docs/scripting-reference/). In such cases, you may encounter excessive boilerplate code just to ensure that the correct data is sent under the appropriate title. This library aims to simplify that process by abstracting transport strategies between sides, thereby standardizing communication.
 
 # 🎁 Examples
 
