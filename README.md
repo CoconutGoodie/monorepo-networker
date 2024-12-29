@@ -143,6 +143,7 @@ Initialize each side in their entry point. And enjoy the standardized messaging 
 
 - `Channel::emit` will emit given event to the given side
 - `Channel::request` will emit given event to the given side, and wait for a response from the target side.
+- `Channel::subscribe` will subscribe a listener for incoming messages on this side. (Note: subscribed listener cannot "respond" to them. Use `Channel::registerMessageHandler` to create a proper responder.)
 
 ```ts
 // ./packages/server/main.ts
@@ -158,23 +159,33 @@ async function bootstrap() {
   // ... Omitted code that bootstraps the server
 
   SERVER_CHANNEL.emit(CLIENT, "hello", "Hi there, client!");
+
+  // Event though CLIENT's `createRectangle` returns void, we can still await on its acknowledgement.
+  await SERVER_CHANNEL.request(CLIENT, "createRectangle", 100, 200);
 }
 
 bootstrap();
 ```
 
-```ts
+```tsx
 // ./packages/client/main.ts
 
 import { CLIENT, SERVER } from "@common/networkSides";
 import { CLIENT_CHANNEL } from "@client/networkChannel";
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import ReactDOM from "react-dom/client";
 import App from "./app";
 
 MonorepoNetworker.initialize(CLIENT, CLIENT_CHANNEL);
 
 console.log("We are @", MonorepoNetworker.getCurrentSide().name);
+
+CLIENT_CHANNEL.emit(SERVER, "hello", "Hi there, server!");
+
+// This one corresponds to SERVER's `getServerTime(): number;` event
+CLIENT_CHANNEL.request(SERVER, "getServerTime").then((serverTime) => {
+  console.log('Server responded with "' + serverTime + '" !');
+});
 
 const rootElement = document.getElementById("root") as HTMLElement;
 const root = ReactDOM.createRoot(rootElement);
@@ -185,12 +196,23 @@ root.render(
   </React.StrictMode>
 );
 
-CLIENT_CHANNEL.emit(SERVER, "hello", "Hi there, server!");
+function App() {
+  const rectangles = useRef<{ w: number; h: number }[]>([]);
 
-// Notice this one returns a Promise<T>
-CLIENT_CHANNEL.request(SERVER, "getServerTime").then((response) => {
-  console.log('Server responded with "' + response + '" !');
-});
+  useEffect(() => {
+    const unsubscribe = CLIENT_CHANNEL.subscribe(
+      "createRectangle",
+      (width, height, from) => {
+        console.log(from.name, "asked for a rectangle!");
+        rectangles.current.push({ w: width, h: height });
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  return <main>{/* ... Omitted for simplicity */}</main>;
+}
 ```
 
 # 📜 License

@@ -8,6 +8,7 @@ export const UI = MonorepoNetworker.createSide<{
 export const CLIENT = MonorepoNetworker.createSide<{
   getClientTime(): number;
   execute(script: string): void;
+  receiveUser(user: { id: string; name: string }): void;
 }>("Client-side");
 
 export const SERVER = MonorepoNetworker.createSide<{

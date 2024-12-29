@@ -1,6 +1,5 @@
 import { MonorepoNetworker } from "./networker";
 import { NetworkEvents, NetworkSide } from "./side";
-import { TrimMethodsReturning } from "./types";
 import { uuidV4 } from "./util/uuid_v4";
 
 const INTERNAL_RESPOND_EVENT = "__INTERNAL_RESPOND_EVENT";
@@ -31,12 +30,13 @@ type SubscriptionHandler<
 
 export type ChannelConfig = {
   /**
+   * Define how this side listens to incoming messages.
    *
-   * @param next x
-   * @returns
+   * @param next Callback function that is supposed to be invoked with the message when an event is received.
+   * @returns An optional cleanup function, that declares how this side detaches the attached listener(s).
    */
   attachListener?: (
-    /** xxx */
+    /** Callback function that is supposed to be invoked with the message when an event is received. */
     next: MessageConsumer
   ) => (() => void) | void;
 };
@@ -46,7 +46,7 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
   protected messageHandlers: {
     [K in keyof TEvents]?: MessageHandler<TEvents, K>;
   } = {};
-  protected subscriptionHandlers: {
+  protected subscriptionListeners: {
     [K in keyof TEvents]?: Record<string, SubscriptionHandler<TEvents, K>>;
   } = {};
   protected emitStrategies: Map<string, MessageConsumer> = new Map();
@@ -64,10 +64,21 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
     );
   }
 
+  /**
+   * Register a strategy on how this side emits message to a certain other side.
+   * @param to The target network side to which messages will be emitted.
+   * @param strategy Strategy for emitting a message.
+   */
   public registerEmitStrategy(to: NetworkSide<any>, strategy: MessageConsumer) {
     this.emitStrategies.set(to.name, strategy);
   }
 
+  /**
+   * Register a handler for an incoming message.
+   * The handler is responsible of listening to incoming events, and possibly responding/returning a value to them.
+   * @param eventName Name of the event to be listened
+   * @param handler Handler that accepts incoming message and sender, then consumes them.
+   */
   public registerMessageHandler<E extends keyof TEvents>(
     eventName: E,
     handler: MessageHandler<TEvents, E>
@@ -101,9 +112,9 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
       return;
     }
 
-    Object.values(this.subscriptionHandlers[message.eventName] ?? {}).forEach(
-      (subscriptionHandler) => {
-        subscriptionHandler(
+    Object.values(this.subscriptionListeners[message.eventName] ?? {}).forEach(
+      (listener) => {
+        listener(
           ...(message.payload as never),
           MonorepoNetworker.getSide(message.fromSide)
         );
@@ -145,10 +156,11 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
     });
   }
 
-  public async request<
-    T extends NetworkEvents,
-    E extends keyof TrimMethodsReturning<T, void>
-  >(targetSide: NetworkSide<T>, eventName: E, ...eventArgs: Parameters<T[E]>) {
+  public async request<T extends NetworkEvents, E extends keyof T>(
+    targetSide: NetworkSide<T>,
+    eventName: E,
+    ...eventArgs: Parameters<T[E]>
+  ) {
     const emit = this.getEmitStrategy(targetSide);
 
     const messageId = uuidV4();
@@ -165,17 +177,17 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
     });
   }
 
-  public subscribe<E extends keyof TrimMethodsReturning<TEvents, {}>>(
+  public subscribe<E extends keyof TEvents>(
     eventName: E,
-    eventHandler: SubscriptionHandler<TEvents, E>
+    eventListener: SubscriptionHandler<TEvents, E>
   ) {
     const subId = uuidV4();
 
-    this.subscriptionHandlers[eventName] ??= {};
-    this.subscriptionHandlers[eventName][subId] = eventHandler;
+    this.subscriptionListeners[eventName] ??= {};
+    this.subscriptionListeners[eventName][subId] = eventListener;
 
     return () => {
-      delete this.subscriptionHandlers[eventName]![subId];
+      delete this.subscriptionListeners[eventName]![subId];
     };
   }
 }

@@ -32,3 +32,6 @@ CLIENT_CHANNEL.registerMessageHandler("execute", (script, from) => {
 CLIENT_CHANNEL.registerMessageHandler("getClientTime", () => {
   return Date.now();
 });
+CLIENT_CHANNEL.registerMessageHandler("receiveUser", (user) => {
+  console.log("A user is received:", user);
+});

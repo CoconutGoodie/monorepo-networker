@@ -22,6 +22,20 @@ async function bootstrap() {
   });
 
   setTimeout(() => unsub(), 5000);
+
+  // Only sends
+  CLIENT_CHANNEL.emit(SERVER, "markPresence", true);
+
+  // Awaits for ack
+  CLIENT_CHANNEL.request(SERVER, "markPresence", true);
+
+  CLIENT_CHANNEL.request(SERVER, "fetchUser", "USR-1").then((user) => {
+    console.log("Responded with", user);
+  });
+
+  CLIENT_CHANNEL.subscribe("receiveUser", (user, from) => {
+    console.log(`Wow! ${from.name} sent us a user info: ${user}`);
+  });
 }
 
 bootstrap();
