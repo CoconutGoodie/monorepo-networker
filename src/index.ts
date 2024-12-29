@@ -1,2 +1,2 @@
 export * from "./networker";
-export type * from "./types";
+export * from "./types";

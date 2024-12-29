@@ -8,8 +8,7 @@ export class NetworkSide<T extends NetworkEvents> {
     return new NetworkSide<T & TE>(name);
   }
 
-  public createChannel(config?: ChannelConfig) {
-    const channel = new NetworkChannel(this, config);
-    return channel;
+  public createChannel<C extends ChannelConfig>(config: C) {
+    return new NetworkChannel<T, C>(this, config);
   }
 }

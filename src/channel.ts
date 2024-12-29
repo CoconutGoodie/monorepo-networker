@@ -51,7 +51,7 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
 
   constructor(
     public readonly side: NetworkSide<TEvents>,
-    protected readonly config?: ChannelConfig
+    protected readonly config: ChannelConfig
   ) {}
 
   protected init() {
@@ -192,8 +192,8 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
   ) {
     const subId = uuidV4();
 
-    this.subscriptionListeners[eventName] ??= {};
-    this.subscriptionListeners[eventName][subId] = eventListener;
+    const listeners = (this.subscriptionListeners[eventName] ??= {});
+    listeners[subId] = eventListener;
 
     return () => {
       delete this.subscriptionListeners[eventName]![subId];

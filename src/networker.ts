@@ -1,5 +1,6 @@
 import { NetworkChannel } from "./channel";
-import { NetworkEvents, NetworkSide } from "./side";
+import { NetworkSide } from "./side";
+import { NetworkEvents } from "./types";
 
 export namespace MonorepoNetworker {
   const _sides: NetworkSide<any>[] = [];
