@@ -1,31 +1,27 @@
 import { MonorepoNetworker } from "./networker";
-import { NetworkEvents, NetworkSide } from "./side";
+import { NetworkSide } from "./side";
+import { NetworkEvents, NetworkMessage } from "./types";
 import { uuidV4 } from "./util/uuid_v4";
 
 const INTERNAL_RESPOND_EVENT = "__INTERNAL_RESPOND_EVENT";
 
-export interface NetworkMessage {
-  /** UUIDv4 ID issues for this message */
-  messageId: string;
-  /** Name of the logical side, which created this message */
-  fromSide: string;
-  /** Name of the event */
-  eventName: string;
-  /** Arguments of the event */
-  payload: any[];
-}
-
 type MessageConsumer = (message: NetworkMessage) => void;
 
 type MessageHandler<TEvents extends NetworkEvents, E extends keyof TEvents> = (
-  ...args: [...Parameters<TEvents[E]>, ...[from: NetworkSide<any>]]
+  ...args: [
+    ...Parameters<TEvents[E]>,
+    ...[from: NetworkSide<any>, rawMessage: NetworkMessage]
+  ]
 ) => ReturnType<TEvents[E]>;
 
 type SubscriptionHandler<
   TEvents extends NetworkEvents,
   E extends keyof TEvents
 > = (
-  ...args: [...Parameters<TEvents[E]>, ...[from: NetworkSide<any>]]
+  ...args: [
+    ...Parameters<TEvents[E]>,
+    ...[from: NetworkSide<any>, rawMessage: NetworkMessage]
+  ]
 ) => undefined;
 
 export type ChannelConfig = {
@@ -59,9 +55,9 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
   ) {}
 
   protected init() {
-    this.listenerCleanup = this.config?.attachListener?.(
-      (message: NetworkMessage) => this.receiveNetworkMessage(message)
-    );
+    const next = (message: NetworkMessage) =>
+      this.receiveNetworkMessage(message);
+    this.listenerCleanup = this.config?.attachListener?.(next);
   }
 
   /**
@@ -104,28 +100,41 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
 
   protected receiveNetworkMessage(message: NetworkMessage) {
     if (message.eventName === INTERNAL_RESPOND_EVENT) {
-      const resolveValue = this.pendingRequests.get(message.messageId);
-      if (resolveValue) {
-        this.pendingRequests.delete(message.messageId);
-        resolveValue(message.payload[0]);
-      }
+      this.receiveResponse(message);
       return;
     }
 
+    this.invokeSubscribers(message);
+    this.handleIncomingMessage(message);
+  }
+
+  protected receiveResponse(message: NetworkMessage) {
+    const resolve = this.pendingRequests.get(message.messageId);
+    if (resolve) {
+      this.pendingRequests.delete(message.messageId);
+      resolve(message.payload[0]);
+    }
+  }
+
+  protected invokeSubscribers(message: NetworkMessage) {
     Object.values(this.subscriptionListeners[message.eventName] ?? {}).forEach(
       (listener) => {
         listener(
           ...(message.payload as never),
-          MonorepoNetworker.getSide(message.fromSide)
+          MonorepoNetworker.getSide(message.fromSide),
+          message
         );
       }
     );
+  }
 
+  protected handleIncomingMessage(message: NetworkMessage) {
     const handler = this.messageHandlers[message.eventName];
     if (handler != null) {
       const result = handler(
         ...(message.payload as never),
-        MonorepoNetworker.getSide(message.fromSide)
+        MonorepoNetworker.getSide(message.fromSide),
+        message
       );
 
       const emit = this.getEmitStrategy(message.fromSide);
@@ -165,8 +174,8 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
 
     const messageId = uuidV4();
 
-    return new Promise<ReturnType<T[E]>>((resolveValue) => {
-      this.pendingRequests.set(messageId, resolveValue);
+    return new Promise<ReturnType<T[E]>>((resolve) => {
+      this.pendingRequests.set(messageId, resolve);
 
       emit({
         messageId,

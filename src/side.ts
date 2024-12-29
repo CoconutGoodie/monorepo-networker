@@ -1,8 +1,5 @@
 import { ChannelConfig, NetworkChannel } from "./channel";
-
-export interface NetworkEvents {
-  [eventName: string]: (...args: any[]) => any;
-}
+import { NetworkEvents } from "./types";
 
 export class NetworkSide<T extends NetworkEvents> {
   constructor(public readonly name: string) {}

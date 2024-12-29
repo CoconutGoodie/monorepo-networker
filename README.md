@@ -42,6 +42,10 @@
 
 Consider a scenario where you are maintaining a codebase that follows a monorepo pattern and houses an IPC-like communication mechanism between ends/sides, much like [FiveM's scripting SDK](https://docs.fivem.net/docs/scripting-reference/) and [Figma's plugin API](https://www.figma.com/plugin-docs/). In such a situation, you may find yourself dealing with numerous boilerplate code just to ensure that you are sending the right data under the correct title. The primary aim of this library is to streamline this process by abstracting away the transport strategies between sides, thereby standardizing the process.
 
+# 🎁 Examples
+
+- [Simple Example](https://github.com/CoconutGoodie/monorepo-networker/tree/master/examples/simple): with 3 sides "Client", "Server" and "UI"
+
 # 💻 How to use it?
 
 <!--
@@ -154,7 +158,7 @@ import { SERVER_CHANNEL } from "@server/networkChannel";
 async function bootstrap() {
   MonorepoNetworker.initialize(SERVER, SERVER_CHANNEL);
 
-  console.log("We are @", MonorepoNetworker.getCurrentSide().name);
+  console.log("We are at", MonorepoNetworker.getCurrentSide().name);
 
   // ... Omitted code that bootstraps the server
 
