@@ -150,6 +150,21 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
     }
   }
 
+  /**
+   * Emits an event to a target side of the network with the specified event name and arguments.
+   *
+   * @param targetSide - The side of the network to which the event will be emitted.
+   * @param eventName - The name of the event to emit.
+   * @param eventArgs - The arguments for the event handler corresponding to the `eventName`.
+   *
+   * @example
+   *  // ./common/sides.ts
+   *  const OTHER_SIDE = MonorepoNetworker.createSide<
+   *    hello(arg1: string): void;
+   *  >("Other-side");
+   *
+   *  MY_CHANNEL.emit(OTHER_SIDE, "hello", "world");
+   */
   public emit<T extends NetworkEvents, E extends keyof T>(
     targetSide: NetworkSide<T>,
     eventName: E,
@@ -165,6 +180,30 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
     });
   }
 
+  /**
+   * Sends a request to a target side of the network with the specified event name and arguments.
+   * Returns a promise that resolves with the response from the target side.
+   *
+   * @param targetSide - The side of the network to which the request will be sent.
+   * @param eventName - The name of the event to request.
+   * @param eventArgs - The arguments for the event handler corresponding to the `eventName`.
+   *
+   * @returns A promise that resolves with the return value of the event handler on the target side.
+   *
+   * @example
+   *  // ./common/sides.ts
+   *  const OTHER_SIDE = MonorepoNetworker.createSide<
+   *    hello(arg1: string): void;
+   *    updateItem(itemId: string, name: string): boolean;
+   *  >("Other-side");
+   *
+   *  MY_CHANNEL.request(OTHER_SIDE, "hello", "world").then(() => {
+   *    console.log("Other side received my request");
+   *  });
+   *  MY_CHANNEL.request(OTHER_SIDE, "updateItem", "item-1", "My Item").then((success) => {
+   *    console.log("Update success:", success);
+   *  });
+   */
   public async request<T extends NetworkEvents, E extends keyof T>(
     targetSide: NetworkSide<T>,
     eventName: E,
@@ -186,6 +225,29 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
     });
   }
 
+  /**
+   * Subscribes to an event with the specified event name and listener.
+   * Returns an unsubscribe function to remove the listener.
+   *
+   * @param eventName - The name of the event to subscribe to.
+   * @param eventListener - The listener function to handle the event when it is triggered.
+   *
+   * @returns A function to unsubscribe the listener from the event.
+   *
+   * @example
+   *  // ./common/sides.ts
+   *  const MY_SIDE = MonorepoNetworker.createSide<
+   *    print(text: string): void;
+   *  >("Other-side");
+   *
+   * // ./my-side/network.ts
+   *  const MY_CHANNEL = MY_SIDE.createChannel({ ... });
+   *
+   *  const unsubscribe = MY_CHANNEL.subscribe("print", text => {
+   *    console.log(text);
+   *  });
+   *  setTimeout(() => unsubscribe(), 5000);
+   */
   public subscribe<E extends keyof TEvents>(
     eventName: E,
     eventListener: SubscriptionHandler<TEvents, E>
