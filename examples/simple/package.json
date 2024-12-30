@@ -1,7 +1,7 @@
 {
   "name": "example-simple",
   "version": "1.0.0",
-  "description": "Simple example with 3 sides, \"Client\", \"Server\", \"UI\"",
+  "description": "Simple example 3 mockup sides: midware \"Client\", HTTP \"Server\" and React \"UI\"",
   "author": "iGoodie",
   "devDependencies": {
     "@types/react": "^19.0.2",
