@@ -46,7 +46,7 @@ Consider a scenario where you maintain a codebase following the monorepo pattern
 
 - [Simple Example](https://github.com/CoconutGoodie/monorepo-networker/tree/master/examples/simple): with 3 mockup sides: midware "Client", HTTP "Server" and React "UI"
 - [Figma Plugin Example](https://github.com/CoconutGoodie/monorepo-networker/tree/master/examples/figma-plugin): with 2 sides: figma "Plugin", and the renderer "UI"
-- [FiveM Server Example](https://github.com/CoconutGoodie/monorepo-networker/tree/master/examples/fivem-resource): with 3 sides: resource "Server", resource "Client", and the "NUI"
+- [FiveM Server Example](https://github.com/CoconutGoodie/monorepo-networker/tree/master/examples/fivem-script): with 3 sides: resource "Server", resource "Client", and the "NUI"
 
 # 💻 How to use it?
 
