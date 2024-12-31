@@ -46,7 +46,7 @@ Consider a scenario where you maintain a codebase following the monorepo pattern
 
 - [Simple Example](https://github.com/CoconutGoodie/monorepo-networker/tree/master/examples/simple): with 3 mockup sides: midware "Client", HTTP "Server" and React "UI"
 - [Figma Plugin Example](https://github.com/CoconutGoodie/monorepo-networker/tree/master/examples/figma-plugin): with 2 sides: figma "Plugin", and the renderer "UI"
-- [FiveM Server Example](): TODO
+- [FiveM Server Example](https://github.com/CoconutGoodie/monorepo-networker/tree/master/examples/fivem-resource): with 3 sides: resource "Server", resource "Client", and the "NUI"
 
 # 💻 How to use it?
 
@@ -71,26 +71,26 @@ Start by creating sides and defining the events they can receive.
 ```ts
 // ./common/networkSides.ts
 
-import { MonorepoNetworker } from "monorepo-networker";
+import { Networker } from "monorepo-networker";
 
-export const UI = MonorepoNetworker.createSide<{
+export const UI = Networker.createSide("UI-side").listens<{
   focusOnSelected(): void;
   focusOnElement(elementId: string): void;
-}>("UI-side");
+}>();
 
-export const CLIENT = MonorepoNetworker.createSide<{
+export const CLIENT = Networker.createSide("Client-side").listens<{
   hello(text: string): void;
   getClientTime(): number;
   createRectangle(width: number, height: number): void;
   execute(script: string): void;
-}>("Client-side");
+}>();
 
-export const SERVER = MonorepoNetworker.createSide<{
+export const SERVER = Networker.createSide("Server-side").listens<{
   hello(text: string): void;
   getServerTime(): number;
   fetchUser(userId: string): { id: string; name: string };
   markPresence(online: boolean): void;
-}>("Server-side");
+}>();
 ```
 
 > [!CAUTION]
@@ -108,8 +108,17 @@ Create the channels for each side. Channels are responsible of communicating wit
 
 import { CLIENT, SERVER, UI } from "@common/networkSides";
 
-export const CLIENT_CHANNEL = CLIENT.createChannel({
-  attachListener(next) {
+export const CLIENT_CHANNEL = CLIENT.channelBuilder()
+  .emitsTo(UI, (message) => {
+    // We're declaring how CLIENT sends a message to UI
+    parent.postMessage({ pluginMessage: message }, "*");
+  })
+  .emitsTo(SERVER, (message) => {
+    // We're declaring how CLIENT sends a message to SERVER
+    fetch("server://", { method: "POST", body: JSON.stringify(message) });
+  })
+  .receivesFrom(UI, (next) => {
+    // We're declaring how CLIENT receives a message from SERVER
     const listener = (event: MessageEvent) => {
       if (event.data?.pluginId == null) return;
       next(event.data.pluginMessage);
@@ -120,17 +129,8 @@ export const CLIENT_CHANNEL = CLIENT.createChannel({
     return () => {
       window.removeEventListener("message", listener);
     };
-  },
-});
-
-// ----------- Declare how messages are emitted to other sides
-
-CLIENT_CHANNEL.registerEmitStrategy(UI, (message) => {
-  parent.postMessage({ pluginMessage: message }, "*");
-});
-CLIENT_CHANNEL.registerEmitStrategy(SERVER, (message) => {
-  fetch("server://", { method: "POST", body: JSON.stringify(message) });
-});
+  })
+  .startListening();
 
 // ----------- Declare how an incoming message is handled
 
@@ -154,20 +154,21 @@ Initialize each side in their entry point. And enjoy the standardized messaging 
 ```ts
 // ./packages/server/main.ts
 
+import { Networker } from "monorepo-networker";
 import { SERVER, CLIENT } from "@common/networkSides";
 import { SERVER_CHANNEL } from "@server/networkChannel";
 
 async function bootstrap() {
-  MonorepoNetworker.initialize(SERVER, SERVER_CHANNEL);
+  Networker.initialize(SERVER, SERVER_CHANNEL);
 
-  console.log("We are at", MonorepoNetworker.getCurrentSide().name);
+  console.log("We are at", Networker.getCurrentSide().name);
 
   // ... Omitted code that bootstraps the server
 
-  SERVER_CHANNEL.emit(CLIENT, "hello", "Hi there, client!");
+  SERVER_CHANNEL.emit(CLIENT, "hello", ["Hi there, client!"]);
 
   // Event though CLIENT's `createRectangle` returns void, we can still await on its acknowledgement.
-  await SERVER_CHANNEL.request(CLIENT, "createRectangle", 100, 200);
+  await SERVER_CHANNEL.request(CLIENT, "createRectangle", [100, 200]);
 }
 
 bootstrap();
@@ -176,19 +177,20 @@ bootstrap();
 ```tsx
 // ./packages/client/main.ts
 
+import { Networker } from "monorepo-networker";
 import { CLIENT, SERVER } from "@common/networkSides";
 import { CLIENT_CHANNEL } from "@client/networkChannel";
 import React, { useEffect, useRef } from "react";
 import ReactDOM from "react-dom/client";
 
-MonorepoNetworker.initialize(CLIENT, CLIENT_CHANNEL);
+Networker.initialize(CLIENT, CLIENT_CHANNEL);
 
-console.log("We are @", MonorepoNetworker.getCurrentSide().name);
+console.log("We are @", Networker.getCurrentSide().name);
 
-CLIENT_CHANNEL.emit(SERVER, "hello", "Hi there, server!");
+CLIENT_CHANNEL.emit(SERVER, "hello", ["Hi there, server!"]);
 
 // This one corresponds to SERVER's `getServerTime(): number;` event
-CLIENT_CHANNEL.request(SERVER, "getServerTime").then((serverTime) => {
+CLIENT_CHANNEL.request(SERVER, "getServerTime", []).then((serverTime) => {
   console.log('Server responded with "' + serverTime + '" !');
 });
 
@@ -221,6 +223,7 @@ function App() {
 ```
 
 # ⭐ Special Thanks to
+
 - [@thediaval](https://github.com/thediaval): For his endless support and awesome memes.
 
 # 📜 License
