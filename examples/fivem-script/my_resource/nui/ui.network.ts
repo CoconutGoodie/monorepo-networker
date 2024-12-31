@@ -1,7 +1,21 @@
 import { CLIENT, NUI } from "@common/networkSides";
 
-export const NUI_CHANNEL = NUI.createChannel({
-  attachListener(next) {
+declare function GetParentResourceName(): string;
+
+export const NUI_CHANNEL = NUI.channelBuilder()
+  .emitsTo(CLIENT, (message) => {
+    fetch(
+      `https://${GetParentResourceName}/__MonorepoNetworker_nuiToClientRpc`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json; charset=UTF-8",
+        },
+        body: JSON.stringify(message),
+      }
+    );
+  })
+  .receivesFrom(CLIENT, (next) => {
     const listener = (event: MessageEvent) => {
       next(event.data);
     };
@@ -11,11 +25,7 @@ export const NUI_CHANNEL = NUI.createChannel({
     return () => {
       window.removeEventListener("message", listener);
     };
-  },
-});
-
-// ----------- Transports
-
-// NUI_CHANNEL.registerEmitStrategy(CLIENT)
+  })
+  .startListening();
 
 // ----------- Message Handlers

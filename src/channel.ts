@@ -51,7 +51,7 @@ export class NetworkChannelBuilder<
   protected emitStrategies: Map<string, EmitStrategy<any>> = new Map();
   protected receiveStrategies: Map<string, ReceiveStrategy<any>> = new Map();
 
-  constructor(public readonly side: NetworkSide<any, TEvents>) {}
+  constructor(protected readonly side: NetworkSide<any, TEvents>) {}
 
   /**
    * Register strategy for how this side receives messages from given other side.

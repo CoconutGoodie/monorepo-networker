@@ -1,19 +1,15 @@
-// import { CLIENT, NUI } from "../common/networkSides";
+import { NetworkMessage } from "../../../../src";
+import { CLIENT, NUI } from "../common/networkSides";
 
-// export const CLIENT_NETWORK = CLIENT.createChannel({
-//   attachListener(next) {
-//     // TODO
-//   },
-// });
-
-// // ----------- Transports
-
-// CLIENT_NETWORK.registerEmitStrategy(CLIENT, (message) => {
-//   emit(message.eventName, message);
-// });
-
-// CLIENT_NETWORK.registerEmitStrategy(NUI, (message) => {
-//   SendNuiMessage(JSON.stringify(message));
-// });
-
-// // ----------- Message Handlers
+export const CLIENT_CHANNEL = CLIENT.channelBuilder()
+  .emitsTo(NUI, (message) => {
+    SendNuiMessage(JSON.stringify(message));
+  })
+  .receivesFrom(NUI, (next) => {
+    const receiveEventName = "__MonorepoNetworker_nuiToClientRpc";
+    RegisterNuiCallbackType(receiveEventName);
+    on(`__cfx_nui:${receiveEventName}`, (message: NetworkMessage) =>
+      next(message)
+    );
+  })
+  .startListening();
