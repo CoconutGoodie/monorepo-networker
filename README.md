@@ -46,7 +46,7 @@ Consider a scenario where you maintain a codebase following the monorepo pattern
 
 - [Simple Example](https://github.com/CoconutGoodie/monorepo-networker/tree/master/examples/simple): with 3 mockup sides: midware "Client", HTTP "Server" and React "UI"
 - [Figma Plugin Example](https://github.com/CoconutGoodie/monorepo-networker/tree/master/examples/figma-plugin): with 2 sides: figma "Plugin", and the renderer "UI"
-- [FiveM Project Example](): TODO
+- [FiveM Server Example](): TODO
 
 # 💻 How to use it?
 
@@ -219,6 +219,9 @@ function App() {
   return <main>{/* ... Omitted for simplicity */}</main>;
 }
 ```
+
+# ⭐ Special Thanks to
+- [@thediaval](https://github.com/thediaval): For his endless support and awesome memes.
 
 # 📜 License
 

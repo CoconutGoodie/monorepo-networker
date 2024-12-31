@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "Node",
+    "useDefineForClassFields": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": false,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "baseUrl": "./",
+    "paths": {
+      "@common/*": ["my-resource/common/*"],
+      "@nui/*": ["my-resource/nui/*"],
+      "@client/*": ["my-resource/client/*"],
+      "@server/*": ["my-resource/server/*"]
+    }
+  },
+  "include": ["my-resource/**/*"]
+}

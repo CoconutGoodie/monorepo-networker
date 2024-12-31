@@ -1,12 +1,12 @@
 import React, { useEffect, useRef } from "react";
 import ReactDOM from "react-dom/client";
-import { MonorepoNetworker } from "../../../../src";
+import { Networker } from "../../../../src";
 import { SERVER, UI } from "../../common/networkSides";
 import { UI_CHANNEL } from "./networkChannel";
 
-MonorepoNetworker.initialize(UI, UI_CHANNEL);
+Networker.initialize(UI, UI_CHANNEL);
 
-console.log("We're at", MonorepoNetworker.getCurrentSide().name);
+console.log("We're at", Networker.getCurrentSide().name);
 
 UI_CHANNEL.emit(SERVER, "markPresence", true);
 

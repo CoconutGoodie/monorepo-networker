@@ -1,14 +1,18 @@
-import { ChannelConfig, NetworkChannel } from "./channel";
+import { NetworkChannelBuilder } from "./channel";
 import { NetworkEvents } from "./types";
 
-export class NetworkSide<T extends NetworkEvents> {
-  constructor(public readonly name: string) {}
+export class NetworkSide<N extends string, T extends NetworkEvents> {
+  constructor(public readonly name: N) {}
 
-  public extend<TE extends NetworkEvents>(name: string) {
-    return new NetworkSide<T & TE>(name);
+  public extend<NE extends string, TE extends NetworkEvents>(name: NE) {
+    return new NetworkSide<NE, T & TE>(name);
   }
 
-  public createChannel<C extends ChannelConfig>(config: C) {
-    return new NetworkChannel<T, C>(this, config);
+  // public createChannel<C extends ChannelConfig>(config: C) {
+  //   return new NetworkChannel<T, {}>(this, config);
+  // }
+
+  public channelBuilder() {
+    return new NetworkChannelBuilder<T, {}>(this);
   }
 }

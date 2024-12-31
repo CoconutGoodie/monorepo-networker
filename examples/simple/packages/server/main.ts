@@ -1,10 +1,10 @@
-import { MonorepoNetworker } from "../../../../src";
+import { Networker } from "../../../../src";
 import { CLIENT, SERVER } from "../../common/networkSides";
 import { SERVER_CHANNEL } from "./networkChannel";
 
-MonorepoNetworker.initialize(SERVER, SERVER_CHANNEL);
+Networker.initialize(SERVER, SERVER_CHANNEL);
 
-console.log("We're at", MonorepoNetworker.getCurrentSide().name);
+console.log("We're at", Networker.getCurrentSide().name);
 
 async function bootstrap() {
   // ... Omitted server setup logic

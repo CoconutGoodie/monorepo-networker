@@ -1,72 +1,132 @@
-import { MonorepoNetworker } from "./networker";
+import { Networker } from "./networker";
 import { NetworkSide } from "./side";
 import { NetworkEvents, NetworkMessage } from "./types";
 import { uuidV4 } from "./util/uuid_v4";
 
 const INTERNAL_RESPOND_EVENT = "__INTERNAL_RESPOND_EVENT";
 
-type MessageConsumer = (message: NetworkMessage) => void;
+type EmitStrategy<EM extends object> = (
+  message: NetworkMessage,
+  metadata: EM
+) => void;
+
+type ReceiveStrategy<EM> = (
+  next: (
+    message: NetworkMessage,
+    ...[metadata]: [EM] extends [never] ? [] : [EM]
+  ) => void
+) => (() => void) | void;
 
 type MessageHandler<TEvents extends NetworkEvents, E extends keyof TEvents> = (
   ...args: [
     ...Parameters<TEvents[E]>,
-    ...[from: NetworkSide<any>, rawMessage: NetworkMessage]
+    ...[from: NetworkSide<any, any>, rawMessage: NetworkMessage]
   ]
 ) => ReturnType<TEvents[E]>;
 
-type SubscriptionHandler<
+type SubscriptionListener<
   TEvents extends NetworkEvents,
   E extends keyof TEvents
-> = (
-  ...args: [
-    ...Parameters<TEvents[E]>,
-    ...[from: NetworkSide<any>, rawMessage: NetworkMessage]
-  ]
-) => undefined;
+> = (...args: Parameters<MessageHandler<TEvents, E>>) => undefined;
 
-export type ChannelConfig = {
+/**
+ * Finalizes the Channel, and starts listening with given procedure.
+ *
+ * @param next Callback function that is supposed to be invoked with the message when an event is received.
+ * @returns An optional cleanup function, that declares how this side detaches the attached listener(s).
+ */
+export type BeginListening = (
+  next: (message: NetworkMessage, metadata?: any) => void
+) => (() => void) | void;
+
+export class NetworkChannelBuilder<
+  TEvents extends NetworkEvents,
+  TEmissionMeta extends { [SideName: string]: EmitStrategy<any> }
+> {
+  protected emitStrategies: Map<string, EmitStrategy<any>> = new Map();
+  protected receiveStrategies: Map<string, ReceiveStrategy<any>> = new Map();
+
+  constructor(public readonly side: NetworkSide<any, TEvents>) {}
+
   /**
-   * Define how this side listens to incoming messages.
+   * Register strategy for how this side receives messages from given other side.
    *
-   * @param next Callback function that is supposed to be invoked with the message when an event is received.
-   * @returns An optional cleanup function, that declares how this side detaches the attached listener(s).
+   *
+   * @param side The network side from which messages will be received.
+   * @param strategy The strategy for handling incoming messages from the specified side.
+   * @returns This channel, so you can chain more things as needed
    */
-  attachListener?: (
-    /** Callback function that is supposed to be invoked with the message when an event is received. */
-    next: MessageConsumer
-  ) => (() => void) | void;
-};
+  public receivesFrom<N extends string>(
+    side: NetworkSide<N, any>,
+    strategy: ReceiveStrategy<
+      N extends keyof TEmissionMeta ? TEmissionMeta[N] : never
+    >
+  ) {
+    this.receiveStrategies.set(side.name, strategy);
+    return this;
+  }
 
-export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
-  protected listenerRef?: TListenerRef;
+  /**
+   * Register strategy on how this side emits message to given other side.
+   *
+   * @param to The target network side to which messages will be emitted.
+   * @param strategy Strategy for emitting a message.
+   * @returns This channel, so you can chain more things as needed
+   */
+  public emitsTo<N extends string, EM extends object = never>(
+    side: NetworkSide<N, any>,
+    strategy: EmitStrategy<EM>
+  ) {
+    this.emitStrategies.set(side.name, strategy);
+    return this as unknown as NetworkChannelBuilder<
+      TEvents,
+      [EM] extends [never]
+        ? TEmissionMeta
+        : TEmissionMeta & {
+            [K in N]: EM;
+          }
+    >;
+  }
+
+  /**
+   * Finalizes and builds the Channel.
+   * And starts listening with registered receiving strategies.
+   *
+   * @returns The channel
+   */
+  public startListening() {
+    return new NetworkChannel<TEvents, TEmissionMeta>(
+      this.side,
+      this.emitStrategies,
+      this.receiveStrategies
+    );
+  }
+}
+
+export class NetworkChannel<
+  TEvents extends NetworkEvents,
+  TEmissionMeta extends { [SideName: string]: EmitStrategy<any> }
+> {
   protected messageHandlers: {
     [K in keyof TEvents]?: MessageHandler<TEvents, K>;
   } = {};
   protected subscriptionListeners: {
-    [K in keyof TEvents]?: Record<string, SubscriptionHandler<TEvents, K>>;
+    [K in keyof TEvents]?: Record<string, SubscriptionListener<TEvents, K>>;
   } = {};
-  protected emitStrategies: Map<string, MessageConsumer> = new Map();
   protected pendingRequests: Map<string, any> = new Map();
-  protected listenerCleanup?: (() => void) | void;
+  protected cleanupCallbacks: (() => void)[] = [];
 
   constructor(
-    public readonly side: NetworkSide<TEvents>,
-    protected readonly config: ChannelConfig
-  ) {}
-
-  protected init() {
-    const next = (message: NetworkMessage) =>
-      this.receiveNetworkMessage(message);
-    this.listenerCleanup = this.config?.attachListener?.(next);
-  }
-
-  /**
-   * Register a strategy on how this side emits message to a certain other side.
-   * @param to The target network side to which messages will be emitted.
-   * @param strategy Strategy for emitting a message.
-   */
-  public registerEmitStrategy(to: NetworkSide<any>, strategy: MessageConsumer) {
-    this.emitStrategies.set(to.name, strategy);
+    public readonly side: NetworkSide<any, TEvents>,
+    protected emitStrategies: Map<string, EmitStrategy<any>> = new Map(),
+    protected receiveStrategies: Map<string, ReceiveStrategy<any>> = new Map()
+  ) {
+    receiveStrategies.forEach((strategy) => {
+      const next = (message: NetworkMessage, metadata?: any) =>
+        this.receiveNetworkMessage(message, metadata);
+      const cleanup = strategy(next);
+      if (cleanup) this.cleanupCallbacks.push(cleanup);
+    });
   }
 
   /**
@@ -82,30 +142,27 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
     this.messageHandlers[eventName] = handler;
   }
 
-  protected getEmitStrategy(side: string): MessageConsumer;
-  protected getEmitStrategy(side: NetworkSide<any>): MessageConsumer;
-  protected getEmitStrategy(side: any) {
-    const sideName = side instanceof NetworkSide ? side.name : side;
-    const strategy = this.emitStrategies.get(sideName);
+  protected getEmitStrategy(side: NetworkSide<any, any>) {
+    const strategy = this.emitStrategies.get(side.name);
 
     if (!strategy) {
-      const currentSide = MonorepoNetworker.getCurrentSide();
+      const currentSide = Networker.getCurrentSide();
       throw new Error(
-        `No emit strategy is registered from ${currentSide.name} to ${sideName}`
+        `No emit strategy is registered from ${currentSide.name} to ${side.name}`
       );
     }
 
     return strategy;
   }
 
-  protected receiveNetworkMessage(message: NetworkMessage) {
+  protected receiveNetworkMessage(message: NetworkMessage, metadata: any) {
     if (message.eventName === INTERNAL_RESPOND_EVENT) {
       this.receiveResponse(message);
       return;
     }
 
     this.invokeSubscribers(message);
-    this.handleIncomingMessage(message);
+    this.handleIncomingMessage(message, metadata);
   }
 
   protected receiveResponse(message: NetworkMessage) {
@@ -121,31 +178,37 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
       (listener) => {
         listener(
           ...(message.payload as never),
-          MonorepoNetworker.getSide(message.fromSide),
+          Networker.getSide(message.fromSide),
           message
         );
       }
     );
   }
 
-  protected handleIncomingMessage(message: NetworkMessage) {
+  protected handleIncomingMessage(message: NetworkMessage, metadata: any) {
     const handler = this.messageHandlers[message.eventName];
     if (handler != null) {
       const result = handler(
         ...(message.payload as never),
-        MonorepoNetworker.getSide(message.fromSide),
+        Networker.getSide(message.fromSide),
         message
       );
 
-      const emit = this.getEmitStrategy(message.fromSide);
+      const side = Networker.getSide(message.fromSide);
+      if (!side) throw new Error();
+
+      const emit = this.getEmitStrategy(side);
 
       if (emit != null) {
-        emit({
-          messageId: message.messageId,
-          fromSide: message.fromSide,
-          eventName: INTERNAL_RESPOND_EVENT,
-          payload: [result],
-        });
+        emit(
+          {
+            messageId: message.messageId,
+            fromSide: message.fromSide,
+            eventName: INTERNAL_RESPOND_EVENT,
+            payload: [result],
+          },
+          metadata
+        );
       }
     }
   }
@@ -155,29 +218,34 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
    *
    * @param targetSide - The side of the network to which the event will be emitted.
    * @param eventName - The name of the event to emit.
-   * @param eventArgs - The arguments for the event handler corresponding to the `eventName`.
+   * @param emitArgs - The arguments for the event handler corresponding to the `eventName`.
+   * @param emitMetadata - The metadata for the event emitter to use.
    *
    * @example
    *  // ./common/sides.ts
-   *  const OTHER_SIDE = MonorepoNetworker.createSide<
+   *  const OTHER_SIDE = Networker.createSide("Other-side").listens<
    *    hello(arg1: string): void;
-   *  >("Other-side");
+   *  >();
    *
-   *  MY_CHANNEL.emit(OTHER_SIDE, "hello", "world");
+   *  MY_CHANNEL.emit(OTHER_SIDE, "hello", ["world"]);
    */
-  public emit<T extends NetworkEvents, E extends keyof T>(
-    targetSide: NetworkSide<T>,
+  public emit<N extends string, T extends NetworkEvents, E extends keyof T>(
+    targetSide: NetworkSide<N, T>,
     eventName: E,
-    ...eventArgs: Parameters<T[E]>
+    emitArgs: Parameters<T[E]>,
+    ...[emitMetadata]: N extends keyof TEmissionMeta ? [TEmissionMeta[N]] : []
   ) {
     const emit = this.getEmitStrategy(targetSide);
 
-    emit({
-      messageId: uuidV4(),
-      fromSide: MonorepoNetworker.getCurrentSide().name,
-      eventName: eventName.toString(),
-      payload: eventArgs,
-    });
+    emit(
+      {
+        messageId: uuidV4(),
+        fromSide: Networker.getCurrentSide().name,
+        eventName: eventName.toString(),
+        payload: emitArgs,
+      },
+      emitMetadata
+    );
   }
 
   /**
@@ -187,27 +255,33 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
    * @param targetSide - The side of the network to which the request will be sent.
    * @param eventName - The name of the event to request.
    * @param eventArgs - The arguments for the event handler corresponding to the `eventName`.
+   * @param emitMetadata - The metadata for the event emitter to use.
    *
    * @returns A promise that resolves with the return value of the event handler on the target side.
    *
    * @example
    *  // ./common/sides.ts
-   *  const OTHER_SIDE = MonorepoNetworker.createSide<
+   *  const OTHER_SIDE = Networker.createSide("Other-side").listens<
    *    hello(arg1: string): void;
    *    updateItem(itemId: string, name: string): boolean;
-   *  >("Other-side");
+   *  >();
    *
-   *  MY_CHANNEL.request(OTHER_SIDE, "hello", "world").then(() => {
+   *  MY_CHANNEL.request(OTHER_SIDE, "hello", ["world"]).then(() => {
    *    console.log("Other side received my request");
    *  });
-   *  MY_CHANNEL.request(OTHER_SIDE, "updateItem", "item-1", "My Item").then((success) => {
+   *  MY_CHANNEL.request(OTHER_SIDE, "updateItem", ["item-1", "My Item"]).then((success) => {
    *    console.log("Update success:", success);
    *  });
    */
-  public async request<T extends NetworkEvents, E extends keyof T>(
-    targetSide: NetworkSide<T>,
+  public async request<
+    N extends string,
+    T extends NetworkEvents,
+    E extends keyof T
+  >(
+    targetSide: NetworkSide<any, T>,
     eventName: E,
-    ...eventArgs: Parameters<T[E]>
+    eventArgs: Parameters<T[E]>,
+    ...[emitMetadata]: N extends keyof TEmissionMeta ? [TEmissionMeta[N]] : []
   ) {
     const emit = this.getEmitStrategy(targetSide);
 
@@ -216,12 +290,15 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
     return new Promise<ReturnType<T[E]>>((resolve) => {
       this.pendingRequests.set(messageId, resolve);
 
-      emit({
-        messageId,
-        fromSide: MonorepoNetworker.getCurrentSide().name,
-        eventName: eventName.toString(),
-        payload: eventArgs,
-      });
+      emit(
+        {
+          messageId,
+          fromSide: Networker.getCurrentSide().name,
+          eventName: eventName.toString(),
+          payload: eventArgs,
+        },
+        emitMetadata
+      );
     });
   }
 
@@ -236,12 +313,12 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
    *
    * @example
    *  // ./common/sides.ts
-   *  const MY_SIDE = MonorepoNetworker.createSide<
+   *  const MY_SIDE = Networker.createSide("Other-side").listens<
    *    print(text: string): void;
-   *  >("Other-side");
+   *  >();
    *
    * // ./my-side/network.ts
-   *  const MY_CHANNEL = MY_SIDE.createChannel({ ... });
+   *  const MY_CHANNEL = MY_SIDE.channelBuilder().beginListening();
    *
    *  const unsubscribe = MY_CHANNEL.subscribe("print", text => {
    *    console.log(text);
@@ -250,7 +327,7 @@ export class NetworkChannel<TEvents extends NetworkEvents, TListenerRef> {
    */
   public subscribe<E extends keyof TEvents>(
     eventName: E,
-    eventListener: SubscriptionHandler<TEvents, E>
+    eventListener: SubscriptionListener<TEvents, E>
   ) {
     const subId = uuidV4();
 

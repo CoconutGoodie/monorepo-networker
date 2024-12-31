@@ -1,10 +1,10 @@
-import { MonorepoNetworker } from "../../../../src";
+import { Networker } from "../../../../src";
 import { CLIENT, SERVER } from "../../common/networkSides";
 import { CLIENT_CHANNEL } from "./networkChannel";
 
-MonorepoNetworker.initialize(CLIENT, CLIENT_CHANNEL);
+Networker.initialize(CLIENT, CLIENT_CHANNEL);
 
-console.log("We're at", MonorepoNetworker.getCurrentSide().name);
+console.log("We're at", Networker.getCurrentSide().name);
 
 async function bootstrap() {
   CLIENT_CHANNEL.emit(SERVER, "markPresence", true);

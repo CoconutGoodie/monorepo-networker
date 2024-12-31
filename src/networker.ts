@@ -2,9 +2,9 @@ import { NetworkChannel } from "./channel";
 import { NetworkSide } from "./side";
 import { NetworkEvents } from "./types";
 
-export namespace MonorepoNetworker {
-  const _sides: NetworkSide<any>[] = [];
-  let _currentSide: NetworkSide<any> | undefined;
+export namespace Networker {
+  const _sides: NetworkSide<any, any>[] = [];
+  let _currentSide: NetworkSide<any, any> | undefined;
 
   /**
    * @throws Will throw an error, if this logical side is not initialized yet.
@@ -18,21 +18,23 @@ export namespace MonorepoNetworker {
   }
 
   /**
-   * Initializes the side into given channel, effectively invoking the channel's `attachListener`.
+   * Initializes the side into given channel.
    *
    * **NOTE:** This MUST be called, before any emit/request can be called from the channel
-   * @param side Side object created by `MonorepoNetwork.createSide`
-   * @param channel Side specific Channel, created by `SIDE.createNetwork`
+   * @param side Side object created by `Networker.createSide`
+   * @param channel Side specific Channel, created by `SIDE.channelBuilder()`
    */
-  export function initialize<T extends NetworkEvents>(
-    side: NetworkSide<T>,
+  export function initialize<N extends string, T extends NetworkEvents>(
+    side: NetworkSide<N, T>,
     channel: NetworkChannel<T, any>
   ) {
     if (_currentSide != null) {
       throw new Error("Logical side can be declared only once.");
     }
+    if (channel.side !== side) {
+      throw new Error("Given side and channel side doesn't match");
+    }
     _currentSide = side;
-    channel["init"]();
   }
 
   /**
@@ -40,10 +42,14 @@ export namespace MonorepoNetworker {
    * @param name Display name of the side
    * @returns A lightweight/shareable representation of the logical side
    */
-  export function createSide<TEvents extends NetworkEvents>(name: string) {
-    const side = new NetworkSide<TEvents>(name);
-    _sides.push(side);
-    return side;
+  export function createSide<N extends string>(name: N) {
+    return {
+      listens: <TEvents extends NetworkEvents>() => {
+        const side = new NetworkSide<N, TEvents>(name);
+        _sides.push(side);
+        return side;
+      },
+    };
   }
 
   /**
