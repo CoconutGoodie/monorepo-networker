@@ -1,22 +1,18 @@
-import { MonorepoNetworker } from "../../../src";
+import { Networker as Networker } from "../../../src";
 
-export const UI = MonorepoNetworker.createSide<{
+export const UI = Networker.createSide("UI-side").listens<{
   focusOnSelected(): void;
   focusOnElement(elementId: string): void;
-}>("UI-side");
+}>();
 
-export const CLIENT = MonorepoNetworker.createSide<{
+export const CLIENT = Networker.createSide("Client-side").listens<{
   getClientTime(): number;
   execute(script: string): void;
   receiveUser(user: { id: string; name: string }): void;
-}>("Client-side");
+}>();
 
-export const SERVER = MonorepoNetworker.createSide<{
+export const SERVER = Networker.createSide("Server-side").listens<{
   getServerTime(): number;
   fetchUser(userId: string): { id: string; name: string };
   markPresence(online: boolean): void;
-}>("Server-side");
-
-export const WORKER_SERVER = SERVER.extend<{
-  work(): void;
-}>("WorkerServer-side");
+}>();

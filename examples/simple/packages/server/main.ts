@@ -15,11 +15,9 @@ async function bootstrap() {
     );
   });
 
-  await SERVER_CHANNEL.request(
-    CLIENT,
-    "execute",
-    "console.log('Hello from Server')"
-  );
+  await SERVER_CHANNEL.request(CLIENT, "execute", [
+    "console.log('Hello from Server')",
+  ]);
 }
 
 bootstrap();

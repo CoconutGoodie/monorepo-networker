@@ -7,13 +7,13 @@ Networker.initialize(CLIENT, CLIENT_CHANNEL);
 console.log("We're at", Networker.getCurrentSide().name);
 
 async function bootstrap() {
-  CLIENT_CHANNEL.emit(SERVER, "markPresence", true);
+  CLIENT_CHANNEL.emit(SERVER, "markPresence", [true]);
 
-  const user = await CLIENT_CHANNEL.request(SERVER, "fetchUser", "USR-1");
+  const user = await CLIENT_CHANNEL.request(SERVER, "fetchUser", ["USR-1"]);
   console.log(user.id);
   console.log(user.name);
 
-  const serverTime = await CLIENT_CHANNEL.request(SERVER, "getServerTime");
+  const serverTime = await CLIENT_CHANNEL.request(SERVER, "getServerTime", []);
   console.log(serverTime);
 
   const unsub = CLIENT_CHANNEL.subscribe("execute", (script, from) => {
@@ -24,12 +24,12 @@ async function bootstrap() {
   setTimeout(() => unsub(), 5000);
 
   // Only sends
-  CLIENT_CHANNEL.emit(SERVER, "markPresence", true);
+  CLIENT_CHANNEL.emit(SERVER, "markPresence", [true]);
 
   // Awaits for ack
-  CLIENT_CHANNEL.request(SERVER, "markPresence", true);
+  CLIENT_CHANNEL.request(SERVER, "markPresence", [true]);
 
-  CLIENT_CHANNEL.request(SERVER, "fetchUser", "USR-1").then((user) => {
+  CLIENT_CHANNEL.request(SERVER, "fetchUser", ["USR-1"]).then((user) => {
     console.log("Responded with", user);
   });
 

@@ -8,10 +8,10 @@ Networker.initialize(UI, UI_CHANNEL);
 
 console.log("We're at", Networker.getCurrentSide().name);
 
-UI_CHANNEL.emit(SERVER, "markPresence", true);
+UI_CHANNEL.emit(SERVER, "markPresence", [true]);
 
 // This one corresponds to SERVER's `getServerTime(): number;` event
-UI_CHANNEL.request(SERVER, "getServerTime").then((serverTime) => {
+UI_CHANNEL.request(SERVER, "getServerTime", []).then((serverTime) => {
   console.log('Server responded with "' + serverTime + '" !');
 });
 

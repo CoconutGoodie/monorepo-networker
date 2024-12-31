@@ -14,11 +14,11 @@
     "jsx": "react-jsx",
     "baseUrl": "./",
     "paths": {
-      "@common/*": ["my-resource/common/*"],
-      "@nui/*": ["my-resource/nui/*"],
-      "@client/*": ["my-resource/client/*"],
-      "@server/*": ["my-resource/server/*"]
+      "@common/*": ["my_resource/common/*"],
+      "@nui/*": ["my_resource/nui/*"],
+      "@client/*": ["my_resource/client/*"],
+      "@server/*": ["my_resource/server/*"]
     }
   },
-  "include": ["my-resource/**/*"]
+  "include": ["my_resource/**/*"]
 }

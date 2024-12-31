@@ -1,7 +1,7 @@
-import { CLIENT, SERVER, UI } from "../../common/networkSides";
+import { CLIENT, UI } from "../../common/networkSides";
 
-export const UI_CHANNEL = UI.createChannel({
-  attachListener(next) {
+export const UI_CHANNEL = UI.channelBuilder()
+  .receivesFrom(CLIENT, (next) => {
     const listener = (event: MessageEvent) => {
       if (event.data?.pluginId == null) return;
       next(event.data.pluginMessage);
@@ -12,14 +12,5 @@ export const UI_CHANNEL = UI.createChannel({
     return () => {
       window.removeEventListener("message", listener);
     };
-  },
-});
-
-// ----------- Transports
-
-UI_CHANNEL.registerEmitStrategy(CLIENT, (message) => {
-  parent.postMessage({ pluginMessage: message }, "*");
-});
-UI_CHANNEL.registerEmitStrategy(SERVER, (message) => {
-  fetch("server://", { method: "POST", body: JSON.stringify(message) });
-});
+  })
+  .startListening();

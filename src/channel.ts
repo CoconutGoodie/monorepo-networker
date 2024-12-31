@@ -27,7 +27,12 @@ type MessageHandler<TEvents extends NetworkEvents, E extends keyof TEvents> = (
 type SubscriptionListener<
   TEvents extends NetworkEvents,
   E extends keyof TEvents
-> = (...args: Parameters<MessageHandler<TEvents, E>>) => undefined;
+> = (
+  ...args: [
+    ...Parameters<TEvents[E]>,
+    ...[from: NetworkSide<any, any>, rawMessage: NetworkMessage]
+  ]
+) => undefined;
 
 /**
  * Finalizes the Channel, and starts listening with given procedure.

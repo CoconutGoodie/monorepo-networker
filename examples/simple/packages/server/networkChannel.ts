@@ -12,8 +12,19 @@ let contexts: Map<
   }
 > = new Map();
 
-export const SERVER_CHANNEL = SERVER.createChannel({
-  attachListener(next) {
+function emitResponse(message: NetworkMessage) {
+  const ctx = contexts.get(message.messageId);
+  if (!ctx) return;
+
+  ctx.res.setHeader("Content-Type", "application/json");
+  ctx.res.end(JSON.stringify(message));
+  contexts.delete(message.messageId);
+}
+
+export const SERVER_CHANNEL = SERVER.channelBuilder()
+  .emitsTo(CLIENT, emitResponse)
+  .emitsTo(UI, emitResponse)
+  .receivesFrom(CLIENT, (next) => {
     const server = http.createServer((req, res) => {
       getHttpBody(req).then((message: NetworkMessage) => {
         contexts.set(message.messageId, { req, res });
@@ -26,22 +37,8 @@ export const SERVER_CHANNEL = SERVER.createChannel({
     return () => {
       server.close();
     };
-  },
-});
-
-// ----------- Transports
-
-function emitResponse(message: NetworkMessage) {
-  const ctx = contexts.get(message.messageId);
-  if (!ctx) return;
-
-  ctx.res.setHeader("Content-Type", "application/json");
-  ctx.res.end(JSON.stringify(message));
-  contexts.delete(message.messageId);
-}
-
-SERVER_CHANNEL.registerEmitStrategy(CLIENT, emitResponse);
-SERVER_CHANNEL.registerEmitStrategy(UI, emitResponse);
+  })
+  .startListening();
 
 // ----------- Message Handlers
 

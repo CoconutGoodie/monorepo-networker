@@ -2,10 +2,10 @@ import { NetworkMessage } from "../../../../src";
 import { CLIENT, SERVER } from "../common/networkSides";
 
 export const SERVER_CHANNEL = SERVER.channelBuilder()
-  .emitsTo(SERVER, (message) => {
-    // emit("__MonorepoNetworker_serverIpc", metadata.resourceName, message);
+  .emitsTo(SERVER, (message, metadata: { resourceName: string }) => {
+    emit("__MonorepoNetworker_serverIpc", metadata.resourceName, message);
   })
-  .emitsTo(CLIENT, (message, metadata: { clientId: number }) => {
+  .emitsTo(CLIENT, (message, metadata: { clientId: number | string }) => {
     emitNet("__MonorepoNetworker_serverToClientIpc", metadata.clientId, [
       message,
     ]);
@@ -23,8 +23,7 @@ export const SERVER_CHANNEL = SERVER.channelBuilder()
       "__MonorepoNetworker_serverIpc",
       (targetResource: string, message: NetworkMessage) => {
         if (targetResource === GetCurrentResourceName()) {
-          next(message);
-          // next(message, { resourceName: GetCurrentResourceName() });
+          next(message, { resourceName: GetCurrentResourceName() });
         }
       }
     );
@@ -33,10 +32,6 @@ export const SERVER_CHANNEL = SERVER.channelBuilder()
 
 // ----------- Message Handlers
 
-SERVER_CHANNEL.emit(SERVER, "createWaypoint", [100, 200]);
-
-SERVER_CHANNEL.emit(CLIENT, "updatePlayerLocation", [100, 200], {
-  clientId: -1,
+SERVER_CHANNEL.registerMessageHandler("fetchPlayerLocation", () => {
+  return GetEntityCoords(global.source) as [number, number];
 });
-
-SERVER_CHANNEL.subscribe("createWaypoint", (x, y) => {});
