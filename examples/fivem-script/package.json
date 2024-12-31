@@ -1,0 +1,17 @@
+{
+  "name": "example-fivem-script",
+  "version": "1.0.0",
+  "description": "",
+  "author": "iGoodie",
+  "scripts": {
+    "build": "node build.js --mode=production",
+    "watch": "node build.js"
+  },
+  "devDependencies": {
+    "@citizenfx/client": "2.0.12168-1",
+    "@citizenfx/server": "2.0.12168-1",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2"
+  }
+}

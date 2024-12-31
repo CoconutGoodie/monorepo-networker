@@ -38,179 +38,161 @@
   </a>
 </p>
 
-## What is monorepo-networker?
+# 🧶 What is monorepo-networker?
 
-Consider a scenario where you are maintaining a codebase that follows a monorepo pattern and houses an IPC-like communication mechanism between ends/sides, much like [FiveM's scripting SDK](https://docs.fivem.net/docs/scripting-reference/) and [Figma's plugin API](https://www.figma.com/plugin-docs/). In such a situation, you may find yourself dealing with numerous boilerplate code just to ensure that you are sending the right data under the correct title. The primary aim of this library is to streamline this process by transforming every message type into an isolated artifact, thereby standardizing the process.
+Consider a scenario where you maintain a codebase following the monorepo pattern, with an IPC-esque communication mechanism between sides—similar to [FiveM's Scripting SDK](https://www.figma.com/plugin-docs/) or [Figma's Plugin API](https://docs.fivem.net/docs/scripting-reference/). In such cases, you may encounter excessive boilerplate code just to ensure that the correct data is sent under the appropriate title. This library aims to simplify that process by abstracting transport strategies between sides, thereby standardizing communication.
 
-## How to use it?
+# 🎁 Examples
 
-Before using it, keep in mind instances you create are supposed to be used commonly accross the sides. So we recommend storing those calls in a `/common/network` folder for convenience.
+- [Simple Example](https://github.com/CoconutGoodie/monorepo-networker/tree/master/examples/simple): with 3 mockup sides: midware "Client", HTTP "Server" and React "UI"
+- [Figma Plugin Example](https://github.com/CoconutGoodie/monorepo-networker/tree/master/examples/figma-plugin): with 2 sides: figma "Plugin", and the renderer "UI"
+- [FiveM Server Example](https://github.com/CoconutGoodie/monorepo-networker/tree/master/examples/fivem-resource): with 3 sides: resource "Server", resource "Client", and the "NUI"
 
-1. Declare and register sides and their handling mechanism under `/common/network/sides.ts`
+# 💻 How to use it?
 
-```ts
-import * as Networker from "monorepo-networker";
+<!--
 
-export namespace NetworkSide {
-  export const SERVER = Networker.Side.register(
-    new Networker.Side("Server", {
-      attachListener: (callback) => server.on("message", callback),
-      detachListener: (callback) => server.off("message", callback),
-    })
-  );
+Before using it, keep in mind instances you create are supposed to be used commonly accross the sides. So we recommend storing those calls in a `/common/network` folder for convenience. -->
 
-  export const CLIENT = Networker.Side.register(
-    new Networker.Side<MessageEvent<any>>("Client", {
-      shouldHandle: (event) => event.data?.pluginId != null,
-      messageGetter: (event) => event.data.pluginMessage,
-      attachListener: (callback) =>
-        window.addEventListener("message", callback),
-      detachListener: (callback) =>
-        window.removeEventListener("message", callback),
-    })
-  );
-}
+This library assumes your codebase is a monorepo that has distinct sides sharing some code. For simplicity, tutorial ahead will use a folder structure like so:
+
+```
+|- common
+|- packages
+|  |- ui
+|  |- client
+|  |- server
 ```
 
-- `attachListener:` declares how given callback is attached to that side's event listening mechanism
-- `detachListener:` declares how given callback is detached from that side's event listening mechanism
-- `shouldHandle?:` declares a predicate function, that determines whether incoming event is a network message we are interested in or not
-- `messageGetter?:` there may be cases where the incoming event is not the actual message, but rather a wrapper around it. To handle such cases, this function specifies how to extract the message from the wrapper.
+## 1. Define the Sides
 
-2. Create 2 test messages. We'll create a `HelloMessage` that emits a message to the other side, and other side prints out incoming data. And we'll create a `PingServerMessae` that will respond with "Pong!" to the requesting side. Create your messages under `/common/network/messages/HelloMessage.ts`:
+Start by creating sides and defining the events they can receive.
 
 ```ts
-import * as Networker from "monorepo-networker";
+// ./common/networkSides.ts
 
-interface Payload {
-  text: string;
-}
+import { Networker } from "monorepo-networker";
 
-export class HelloMessage extends Networker.MessageType<Payload> {
-  constructor(private side: Networker.Side) {
-    super("hello-" + side.getName());
-  }
+export const UI = Networker.createSide("UI-side").listens<{
+  focusOnSelected(): void;
+  focusOnElement(elementId: string): void;
+}>();
 
-  receivingSide(): Networker.Side {
-    return this.side;
-  }
+export const CLIENT = Networker.createSide("Client-side").listens<{
+  hello(text: string): void;
+  getClientTime(): number;
+  createRectangle(width: number, height: number): void;
+  execute(script: string): void;
+}>();
 
-  handle(payload: Payload, from: Networker.Side) {
-    console.log(`${from.getName()} said "${payload.text}"`);
-  }
-}
+export const SERVER = Networker.createSide("Server-side").listens<{
+  hello(text: string): void;
+  getServerTime(): number;
+  fetchUser(userId: string): { id: string; name: string };
+  markPresence(online: boolean): void;
+}>();
 ```
 
-and `/common/network/messages/PingServerMessage.ts`:
+> [!CAUTION]
+> Side objects created here are supposed to be used across different side runtimes.
+> Make sure **NOT** to use anything side-dependent in here.
+
+## 2. Create the Channels
+
+Create the channels for each side. Channels are responsible of communicating with other sides and listening to incoming messages using the registered strategies.
+
+(Only the code for CLIENT side is shown, for simplicity.)
 
 ```ts
-import * as Networker from "monorepo-networker";
-import { NetworkSide } from "@common/network/sides";
+// ./packages/client/networkChannel.ts
 
-interface Payload {}
+import { CLIENT, SERVER, UI } from "@common/networkSides";
 
-type Response = string;
+export const CLIENT_CHANNEL = CLIENT.channelBuilder()
+  .emitsTo(UI, (message) => {
+    // We're declaring how CLIENT sends a message to UI
+    parent.postMessage({ pluginMessage: message }, "*");
+  })
+  .emitsTo(SERVER, (message) => {
+    // We're declaring how CLIENT sends a message to SERVER
+    fetch("server://", { method: "POST", body: JSON.stringify(message) });
+  })
+  .receivesFrom(UI, (next) => {
+    // We're declaring how CLIENT receives a message from SERVER
+    const listener = (event: MessageEvent) => {
+      if (event.data?.pluginId == null) return;
+      next(event.data.pluginMessage);
+    };
 
-export class PingServerMessage extends Networker.MessageType<
-  Payload,
-  Response
-> {
-  receivingSide(): Networker.Side {
-    return NetworkSide.SERVER;
-  }
+    window.addEventListener("message", listener);
 
-  handle(payload: Payload, from: Networker.Side): string {
-    console.log(from.getName(), "has pinged us!");
-    return `Pong, ${from.getName()}!`;
-  }
-}
-```
+    return () => {
+      window.removeEventListener("message", listener);
+    };
+  })
+  .startListening();
 
-> <picture>
->   <source media="(prefers-color-scheme: light)" srcset="https://github.com/Mqxx/GitHub-Markdown/blob/main/blockquotes/badge/light-theme/tip.svg">
->   <img alt="Tip" src="https://github.com/Mqxx/GitHub-Markdown/blob/main/blockquotes/badge/dark-theme/tip.svg">
-> </picture><br>
->
-> Some messages can present a response, where some do not. In that case, you should declare a `Response` type representing what does the handler respond with. This then later be used with `Network.MessageType::request`, we'll cover in next steps.
+// ----------- Declare how an incoming message is handled
 
-3. Create a registry to stored message types under `/common/network/messages.ts`
-
-```ts
-import * as Networker from "monorepo-networker";
-import { NetworkSide } from "@common/network/sides";
-import { HelloMessage } from "@common/network/messages/HelloMessage";
-import { PingServerMessage } from "@common/network/messages/PingServerMessage";
-
-export namespace NetworkMessages {
-  export const registry = new Networker.MessageTypeRegistry();
-
-  export const HELLO_SERVER = registry.register(
-    new HelloMessage(NetworkSide.SERVER)
-  );
-
-  export const HELLO_CLIENT = registry.register(
-    new HelloMessage(NetworkSide.CLIENT)
-  );
-
-  export const PING = registry.register(new PingMessage("ping"));
-}
-```
-
-4. Finally create an initializer, which also declares how sides communicate with each other. We'll call this initializer on each side later on. Create it under `/common/network/init.ts`:
-
-```ts
-import * as Networker from "monorepo-networker";
-import { NetworkMessages } from "@common/network/messages";
-import { NetworkSide } from "@common/network/sides";
-
-export const initializeNetwork = Networker.createInitializer({
-  messagesRegistry: NetworkMessages.registry,
-
-  initTransports: function (register) {
-    // Declaring how a message is transported from server to client
-    register(NetworkSide.SERVER, NetworkSide.CLIENT, (message) => {
-      server.sendMessage(message); // <-- Totally arbitrary
-    });
-
-    // Declaring how a message is transported from client to server
-    register(NetworkSide.CLIENT, NetworkSide.SERVER, (message) => {
-      parent.postMessage({ pluginMessage: message }, "*"); // <-- Totally arbitrary
-    });
-  },
+CLIENT_CHANNEL.registerMessageHandler("hello", (text, from) => {
+  console.log(from.name, "said:", text);
+});
+CLIENT_CHANNEL.registerMessageHandler("getClientTime", () => {
+  // Returning a value will make this event "request-able"
+  return Date.now();
 });
 ```
 
-5. Once done with setting up the common base, we can hop to entry points of each side. We'll need to initialize our network on each side.
+## 3. Initialize & Invoke
 
-`server/main.ts`
+Initialize each side in their entry point. And enjoy the standardized messaging api!
+
+- `Channel::emit` will emit given event to the given side
+- `Channel::request` will emit given event to the given side, and wait for a response from the target side.
+- `Channel::subscribe` will subscribe a listener for incoming messages on this side. (Note: subscribed listener cannot "respond" to them. Use `Channel::registerMessageHandler` to create a proper responder.)
 
 ```ts
-import { initializeNetwork } from "@common/network/init";
-import { NetworkSide } from "@common/network/sides";
-import { NetworkMessages } from "@common/network/messages";
+// ./packages/server/main.ts
+
+import { Networker } from "monorepo-networker";
+import { SERVER, CLIENT } from "@common/networkSides";
+import { SERVER_CHANNEL } from "@server/networkChannel";
 
 async function bootstrap() {
-  initializeNetwork(NetworkSide.SERVER);
+  Networker.initialize(SERVER, SERVER_CHANNEL);
+
+  console.log("We are at", Networker.getCurrentSide().name);
 
   // ... Omitted code that bootstraps the server
 
-  NetworkMessages.HELLO_CLIENT.send({ text: "Hey there, Client!" });
+  SERVER_CHANNEL.emit(CLIENT, "hello", ["Hi there, client!"]);
+
+  // Event though CLIENT's `createRectangle` returns void, we can still await on its acknowledgement.
+  await SERVER_CHANNEL.request(CLIENT, "createRectangle", [100, 200]);
 }
 
 bootstrap();
 ```
 
-`client/main.ts`
+```tsx
+// ./packages/client/main.ts
 
-```ts
-import { initializeNetwork } from "@common/network/init";
-import { NetworkMessages } from "@common/network/messages";
-import { NetworkSide } from "@common/network/sides";
-import React from "react";
+import { Networker } from "monorepo-networker";
+import { CLIENT, SERVER } from "@common/networkSides";
+import { CLIENT_CHANNEL } from "@client/networkChannel";
+import React, { useEffect, useRef } from "react";
 import ReactDOM from "react-dom/client";
-import App from "./app";
 
-initializeNetwork(NetworkSide.UI);
+Networker.initialize(CLIENT, CLIENT_CHANNEL);
+
+console.log("We are @", Networker.getCurrentSide().name);
+
+CLIENT_CHANNEL.emit(SERVER, "hello", ["Hi there, server!"]);
+
+// This one corresponds to SERVER's `getServerTime(): number;` event
+CLIENT_CHANNEL.request(SERVER, "getServerTime", []).then((serverTime) => {
+  console.log('Server responded with "' + serverTime + '" !');
+});
 
 const rootElement = document.getElementById("root") as HTMLElement;
 const root = ReactDOM.createRoot(rootElement);
@@ -221,10 +203,33 @@ root.render(
   </React.StrictMode>
 );
 
-NetworkMessages.HELLO_SERVER.send({ text: "Hey there, Server!" });
+function App() {
+  const rectangles = useRef<{ w: number; h: number }[]>([]);
 
-// Notice this one returns a Promise<T>
-NetworkMessages.PING.request({}).then((response) => {
-  console.log('Server responded with "' + response + '" !');
-});
+  useEffect(() => {
+    const unsubscribe = CLIENT_CHANNEL.subscribe(
+      "createRectangle",
+      (width, height, from) => {
+        console.log(from.name, "asked for a rectangle!");
+        rectangles.current.push({ w: width, h: height });
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  return <main>{/* ... Omitted for simplicity */}</main>;
+}
 ```
+
+# ⭐ Special Thanks to
+
+- [@thediaval](https://github.com/thediaval): For his endless support and awesome memes.
+
+# 📜 License
+
+&copy; 2024 Taha Anılcan Metinyurt (iGoodie)
+
+For any part of this work for which the license is applicable, this work is licensed under the [Attribution-ShareAlike 4.0 International](http://creativecommons.org/licenses/by-sa/4.0/) license. (See LICENSE).
+
+<a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" /></a>

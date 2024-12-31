@@ -1,0 +1,12 @@
+{
+  "name": "example-simple",
+  "version": "1.0.0",
+  "description": "Simple example 3 mockup sides: midware \"Client\", HTTP \"Server\" and React \"UI\"",
+  "author": "iGoodie",
+  "devDependencies": {
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}
