@@ -39,7 +39,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "prepack": "npm run build"
+    "prepack": "pnpm run build"
   },
   "devDependencies": {
     "@figma/plugin-typings": "^1.62.0",
