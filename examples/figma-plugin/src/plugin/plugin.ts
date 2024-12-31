@@ -1,9 +1,9 @@
 import { PLUGIN, UI } from "@common/networkSides";
 import { PLUGIN_CHANNEL } from "@plugin/plugin.network";
-import { MonorepoNetworker } from "../../../../src";
+import { Networker } from "../../../../src";
 
 async function bootstrap() {
-  MonorepoNetworker.initialize(PLUGIN, PLUGIN_CHANNEL);
+  Networker.initialize(PLUGIN, PLUGIN_CHANNEL);
 
   if (figma.editorType === "figma") {
     figma.showUI(__html__, {
@@ -13,9 +13,9 @@ async function bootstrap() {
     });
   }
 
-  console.log("Bootstrapped @", MonorepoNetworker.getCurrentSide().name);
+  console.log("Bootstrapped @", Networker.getCurrentSide().name);
 
-  PLUGIN_CHANNEL.emit(UI, "hello", "Hey there, UI!");
+  PLUGIN_CHANNEL.emit(UI, "hello", ["Hey there, UI!"]);
 }
 
 bootstrap();

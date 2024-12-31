@@ -1,10 +1,10 @@
-import { MonorepoNetworker } from "../../../../src";
+import { Networker } from "../../../../src";
 
-export const PLUGIN = MonorepoNetworker.createSide<{
+export const PLUGIN = Networker.createSide("Plugin-side").listens<{
   createRectangle(width: number, height: number): string;
-}>("Plugin-side");
+}>();
 
-export const UI = MonorepoNetworker.createSide<{
+export const UI = Networker.createSide("Plugin-side").listens<{
   hello(text: string): void;
   focusOnElement(elementId: string): void;
-}>("Plugin-side");
+}>();

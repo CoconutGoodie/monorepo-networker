@@ -1,7 +1,10 @@
 import { PLUGIN, UI } from "@common/networkSides";
 
-export const UI_CHANNEL = UI.createChannel({
-  attachListener: (next) => {
+export const UI_CHANNEL = UI.channelBuilder()
+  .emitsTo(PLUGIN, (message) => {
+    parent.postMessage({ pluginMessage: message }, "*");
+  })
+  .receivesFrom(PLUGIN, (next) => {
     const listener = (event: MessageEvent) => {
       if (event.data?.pluginId == null) return;
       next(event.data.pluginMessage);
@@ -9,14 +12,8 @@ export const UI_CHANNEL = UI.createChannel({
 
     window.addEventListener("message", listener);
     return () => window.removeEventListener("message", listener);
-  },
-});
-
-// ---------- Emission strategies
-
-UI_CHANNEL.registerEmitStrategy(PLUGIN, (message) => {
-  parent.postMessage({ pluginMessage: message }, "*");
-});
+  })
+  .startListening();
 
 // ---------- Message handlers
 
