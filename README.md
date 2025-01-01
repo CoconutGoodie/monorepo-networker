@@ -118,7 +118,7 @@ export const CLIENT_CHANNEL = CLIENT.channelBuilder()
     fetch("server://", { method: "POST", body: JSON.stringify(message) });
   })
   .receivesFrom(UI, (next) => {
-    // We're declaring how CLIENT receives a message from SERVER
+    // We're declaring how CLIENT receives a message from UI
     const listener = (event: MessageEvent) => {
       if (event.data?.pluginId == null) return;
       next(event.data.pluginMessage);
