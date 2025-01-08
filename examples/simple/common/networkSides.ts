@@ -14,5 +14,5 @@ export const CLIENT = Networker.createSide("Client-side").listens<{
 export const SERVER = Networker.createSide("Server-side").listens<{
   getServerTime(): number;
   fetchUser(userId: string): { id: string; name: string };
-  markPresence(online: boolean): void;
+  markPresence(online: boolean): Promise<void>;
 }>();

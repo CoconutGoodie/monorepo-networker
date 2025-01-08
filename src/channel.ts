@@ -22,7 +22,7 @@ type MessageHandler<TEvents extends NetworkEvents, E extends keyof TEvents> = (
     ...Parameters<TEvents[E]>,
     ...[from: NetworkSide<any, any>, rawMessage: NetworkMessage]
   ]
-) => ReturnType<TEvents[E]>;
+) => ReturnType<TEvents[E]> | Promise<ReturnType<TEvents[E]>>;
 
 type SubscriptionListener<
   TEvents extends NetworkEvents,
@@ -160,7 +160,10 @@ export class NetworkChannel<
     return strategy;
   }
 
-  protected receiveNetworkMessage(message: NetworkMessage, metadata: any) {
+  protected async receiveNetworkMessage(
+    message: NetworkMessage,
+    metadata: any
+  ) {
     if (message.eventName === INTERNAL_RESPOND_EVENT) {
       this.receiveResponse(message);
       return;
@@ -170,7 +173,7 @@ export class NetworkChannel<
     this.handleIncomingMessage(message, metadata);
   }
 
-  protected receiveResponse(message: NetworkMessage) {
+  protected async receiveResponse(message: NetworkMessage) {
     const resolve = this.pendingRequests.get(message.messageId);
     if (resolve) {
       this.pendingRequests.delete(message.messageId);
@@ -178,7 +181,7 @@ export class NetworkChannel<
     }
   }
 
-  protected invokeSubscribers(message: NetworkMessage) {
+  protected async invokeSubscribers(message: NetworkMessage) {
     Object.values(this.subscriptionListeners[message.eventName] ?? {}).forEach(
       (listener) => {
         listener(
@@ -190,17 +193,24 @@ export class NetworkChannel<
     );
   }
 
-  protected handleIncomingMessage(message: NetworkMessage, metadata: any) {
+  protected async handleIncomingMessage(
+    message: NetworkMessage,
+    metadata: any
+  ) {
     const handler = this.messageHandlers[message.eventName];
     if (handler != null) {
-      const result = handler(
+      const result = await handler(
         ...(message.payload as never),
         Networker.getSide(message.fromSide),
         message
       );
 
       const side = Networker.getSide(message.fromSide);
-      if (!side) throw new Error();
+      if (!side) {
+        throw new Error(
+          `Message received from an unknown side: ${message.fromSide}`
+        );
+      }
 
       const emit = this.getEmitStrategy(side);
 
