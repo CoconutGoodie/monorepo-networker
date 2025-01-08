@@ -141,6 +141,12 @@ CLIENT_CHANNEL.registerMessageHandler("getClientTime", () => {
   // Returning a value will make this event "request-able"
   return Date.now();
 });
+CLIENT_CHANNEL.registerMessageHandler("execute", async (script) => {
+  // It also supports Async handlers!
+  return new Promise<void>((resolve) => {
+    setTimeout(() => resolve(eval(script)), 5000);
+  });
+});
 ```
 
 ## 3. Initialize & Invoke
