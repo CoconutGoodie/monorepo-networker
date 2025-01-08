@@ -183,7 +183,7 @@ bootstrap();
 ```tsx
 // ./packages/client/main.ts
 
-import { Networker } from "monorepo-networker";
+import { Networker, NetworkError } from "monorepo-networker";
 import { CLIENT, SERVER } from "@common/networkSides";
 import { CLIENT_CHANNEL } from "@client/networkChannel";
 import React, { useEffect, useRef } from "react";
@@ -196,9 +196,15 @@ console.log("We are @", Networker.getCurrentSide().name);
 CLIENT_CHANNEL.emit(SERVER, "hello", ["Hi there, server!"]);
 
 // This one corresponds to SERVER's `getServerTime(): number;` event
-CLIENT_CHANNEL.request(SERVER, "getServerTime", []).then((serverTime) => {
-  console.log('Server responded with "' + serverTime + '" !');
-});
+CLIENT_CHANNEL.request(SERVER, "getServerTime", [])
+  .then((serverTime) => {
+    console.log('Server responded with "' + serverTime + '" !');
+  })
+  .catch((err) => {
+    if (err instanceof NetworkError) {
+      console.log("Server failed to respond..", { message: err.message });
+    }
+  });
 
 const rootElement = document.getElementById("root") as HTMLElement;
 const root = ReactDOM.createRoot(rootElement);
