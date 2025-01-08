@@ -1,7 +1,7 @@
 {
   "name": "monorepo-networker",
-  "version": "2.0.0",
-  "description": "This is a simple utility package",
+  "version": "2.1.0",
+  "description": "A library designed to facilitate the maintenance of networking code in monorepos",
   "author": {
     "name": "Taha Anılcan Metinyurt - iGoodie",
     "url": "https://github.com/iGoodie",

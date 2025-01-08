@@ -66,6 +66,12 @@ SERVER_CHANNEL.registerMessageHandler(
 
 SERVER_CHANNEL.registerMessageHandler("getServerTime", () => Date.now());
 
-SERVER_CHANNEL.registerMessageHandler("markPresence", (online) => {
-  users["USER-1"].present = online;
+SERVER_CHANNEL.registerMessageHandler("markPresence", async (online) => {
+  return new Promise<void>((resolve) => {
+    // Pseudo-delay to demonstrate async message handler
+    setTimeout(() => {
+      users["USER-1"].present = online;
+      resolve();
+    }, 2000);
+  });
 });
