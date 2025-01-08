@@ -1,9 +1,11 @@
 import { Networker } from "./networker";
 import { NetworkSide } from "./side";
 import { NetworkEvents, NetworkMessage } from "./types";
+import { NetworkError } from "./util/NetworkError";
 import { uuidV4 } from "./util/uuid_v4";
 
-const INTERNAL_RESPOND_EVENT = "__INTERNAL_RESPOND_EVENT";
+const INTERNAL_SUCCESS_RESPONSE_EVENT = "__INTERNAL_SUCCESS_RESPONSE_EVENT";
+const INTERNAL_ERROR_RESPONSE_EVENT = "__INTERNAL_ERROR_RESPONSE_EVENT";
 
 type EmitStrategy<EM extends object> = (
   message: NetworkMessage,
@@ -16,6 +18,10 @@ type ReceiveStrategy<EM> = (
     ...[metadata]: [EM] extends [never] ? [] : [EM]
   ) => void
 ) => (() => void) | void;
+
+type ResponseResolver = (value: any) => void;
+
+type ResponseRejecter = (err: NetworkError) => void;
 
 type MessageHandler<TEvents extends NetworkEvents, E extends keyof TEvents> = (
   ...args: [
@@ -118,7 +124,10 @@ export class NetworkChannel<
   protected subscriptionListeners: {
     [K in keyof TEvents]?: Record<string, SubscriptionListener<TEvents, K>>;
   } = {};
-  protected pendingRequests: Map<string, any> = new Map();
+  protected pendingRequests: Map<
+    string,
+    { resolve: ResponseResolver; reject: ResponseRejecter }
+  > = new Map();
   protected cleanupCallbacks: (() => void)[] = [];
 
   constructor(
@@ -164,8 +173,13 @@ export class NetworkChannel<
     message: NetworkMessage,
     metadata: any
   ) {
-    if (message.eventName === INTERNAL_RESPOND_EVENT) {
-      this.receiveResponse(message);
+    if (message.eventName === INTERNAL_SUCCESS_RESPONSE_EVENT) {
+      this.receiveSuccessResponse(message);
+      return;
+    }
+
+    if (message.eventName === INTERNAL_ERROR_RESPONSE_EVENT) {
+      this.receiveErrorResponse(message);
       return;
     }
 
@@ -173,11 +187,19 @@ export class NetworkChannel<
     this.handleIncomingMessage(message, metadata);
   }
 
-  protected async receiveResponse(message: NetworkMessage) {
-    const resolve = this.pendingRequests.get(message.messageId);
+  protected async receiveSuccessResponse(message: NetworkMessage) {
+    const { resolve } = this.pendingRequests.get(message.messageId) ?? {};
     if (resolve) {
       this.pendingRequests.delete(message.messageId);
       resolve(message.payload[0]);
+    }
+  }
+
+  protected async receiveErrorResponse(message: NetworkMessage) {
+    const { reject } = this.pendingRequests.get(message.messageId) ?? {};
+    if (reject) {
+      this.pendingRequests.delete(message.messageId);
+      reject(new NetworkError(message));
     }
   }
 
@@ -198,13 +220,8 @@ export class NetworkChannel<
     metadata: any
   ) {
     const handler = this.messageHandlers[message.eventName];
-    if (handler != null) {
-      const result = await handler(
-        ...(message.payload as never),
-        Networker.getSide(message.fromSide),
-        message
-      );
 
+    if (handler != null) {
       const side = Networker.getSide(message.fromSide);
       if (!side) {
         throw new Error(
@@ -214,16 +231,38 @@ export class NetworkChannel<
 
       const emit = this.getEmitStrategy(side);
 
-      if (emit != null) {
-        emit(
-          {
-            messageId: message.messageId,
-            fromSide: message.fromSide,
-            eventName: INTERNAL_RESPOND_EVENT,
-            payload: [result],
-          },
-          metadata
+      try {
+        const result = await handler(
+          ...(message.payload as never),
+          Networker.getSide(message.fromSide),
+          message
         );
+
+        if (emit != null) {
+          emit(
+            {
+              messageId: message.messageId,
+              fromSide: message.fromSide,
+              eventName: INTERNAL_SUCCESS_RESPONSE_EVENT,
+              payload: [result],
+            },
+            metadata
+          );
+        }
+      } catch (err) {
+        if (emit != null) {
+          emit(
+            {
+              messageId: message.messageId,
+              fromSide: message.fromSide,
+              eventName: INTERNAL_ERROR_RESPONSE_EVENT,
+              payload: [
+                err instanceof Error ? err.message : "Failed to handle",
+              ],
+            },
+            metadata
+          );
+        }
       }
     }
   }
@@ -302,8 +341,8 @@ export class NetworkChannel<
 
     const messageId = uuidV4();
 
-    return new Promise<ReturnType<T[E]>>((resolve) => {
-      this.pendingRequests.set(messageId, resolve);
+    return new Promise<ReturnType<T[E]>>((resolve, reject) => {
+      this.pendingRequests.set(messageId, { resolve, reject });
 
       emit(
         {
